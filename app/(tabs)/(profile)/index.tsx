@@ -146,6 +146,18 @@ export default function ProfileScreen() {
         </View>
       </View>
 
+      <View style={styles.socialRow}>
+        <TouchableOpacity style={styles.socialButton} onPress={() => router.push('/(tabs)/(profile)/friends')}>
+          <Text style={styles.socialButtonText}>Friends</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.socialButton} onPress={() => router.push('/(tabs)/(profile)/requests')}>
+          <Text style={styles.socialButtonText}>Requests</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.socialButton} onPress={() => router.push('/(tabs)/(profile)/circles')}>
+          <Text style={styles.socialButtonText}>Circles</Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.tabsContainer}>
         <TouchableOpacity
           style={[styles.tab, selectedTab === 'favorites' && styles.tabActive]}
@@ -332,6 +344,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 20,
     gap: 12,
+  },
+  socialRow: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  socialButton: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  socialButtonText: {
+    color: '#1a1a1a',
+    fontWeight: '700' as const,
   },
   statBox: {
     flex: 1,

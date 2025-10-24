@@ -371,12 +371,25 @@ export default function MapScreen() {
 
       <View style={styles.headerContainer}>
         <View style={styles.header}>
+          <TouchableOpacity
+            testID="profile-button"
+            accessibilityRole="button"
+            onPress={() => router.push('/(tabs)/(profile)')}
+            style={styles.profileButton}
+          >
+            <View style={styles.avatarMini}>
+              <Text style={styles.avatarMiniText}>
+                {user?.firstname?.[0]?.toUpperCase() ?? 'U'}
+              </Text>
+            </View>
+          </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Explore NYC</Text>
             <Text style={styles.headerSubtitle}>
               {filteredAttractions.length} {filteredAttractions.length === 1 ? 'attraction' : 'attractions'} found
             </Text>
           </View>
+          <View style={{ width: 40 }} />
         </View>
         
         <View style={styles.searchContainer}>
@@ -614,6 +627,29 @@ const styles = StyleSheet.create({
   headerTextContainer: {
     flex: 1,
     alignItems: 'center',
+  },
+  profileButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E8F4FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarMini: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E8F4FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#CCE6FF',
+  },
+  avatarMiniText: {
+    fontSize: 16,
+    fontWeight: '800' as const,
+    color: '#007AFF',
   },
   headerTitle: {
     fontSize: 28,

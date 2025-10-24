@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { User, Compass } from 'lucide-react-native';
+import { User, Compass, MessageSquareText } from 'lucide-react-native';
 
 export default function TabsLayout() {
   return (
@@ -31,6 +31,13 @@ export default function TabsLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="chats"
+        options={{
+          title: 'Chats',
+          tabBarIcon: ({ color, size }) => <MessageSquareText size={size} color={color} />,
         }}
       />
     </Tabs>

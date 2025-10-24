@@ -110,6 +110,9 @@ export default function VerifyScreen() {
   };
 
   const handleContinue = () => {
+    if (!(isEmailVerified && isPhoneVerified)) {
+      return;
+    }
     router.replace('/');
   };
 
@@ -255,17 +258,17 @@ export default function VerifyScreen() {
           <TouchableOpacity
             style={[
               styles.continueButton,
-              (!isEmailVerified || !isPhoneVerified) && styles.continueButtonSecondary,
+              (!isEmailVerified || !isPhoneVerified) && styles.buttonDisabled,
             ]}
             onPress={handleContinue}
+            disabled={!isEmailVerified || !isPhoneVerified}
           >
             <Text
               style={[
                 styles.continueButtonText,
-                (!isEmailVerified || !isPhoneVerified) && styles.continueButtonTextSecondary,
               ]}
             >
-              {isEmailVerified && isPhoneVerified ? 'Continue' : 'Skip for Now'}
+              Continue
             </Text>
           </TouchableOpacity>
         </View>

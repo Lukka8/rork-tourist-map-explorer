@@ -61,6 +61,18 @@ export const api = {
     
     me: () =>
       apiFetch<{ id: number; username: string; firstname: string; lastname: string; email: string; phone: string; email_verified: boolean; phone_verified: boolean }>('/api/auth/me'),
+
+    checkUsername: (username: string) =>
+      apiFetch<{ available: boolean }>('/api/auth/check-username', {
+        method: 'POST',
+        body: JSON.stringify({ username }),
+      }),
+
+    checkEmail: (email: string) =>
+      apiFetch<{ available: boolean }>('/api/auth/check-email', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      }),
   },
   
   favorites: {

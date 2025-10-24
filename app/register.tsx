@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { UserPlus, User, Mail, Phone, Lock, ChevronDown, Search, X } from 'lucide-react-native';
 import { useAuth } from '@/lib/auth-context';
+import { api } from '@/lib/api-client';
 
 interface Country {
   code: string;
@@ -216,6 +217,10 @@ export default function RegisterScreen() {
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [countrySearch, setCountrySearch] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [isUsernameChecking, setIsUsernameChecking] = useState(false);
+  const [isEmailChecking, setIsEmailChecking] = useState(false);
+  const [isUsernameAvailable, setIsUsernameAvailable] = useState<boolean | null>(null);
+  const [isEmailAvailable, setIsEmailAvailable] = useState<boolean | null>(null);
   const { register } = useAuth();
   const router = useRouter();
 
@@ -317,7 +322,25 @@ export default function RegisterScreen() {
                 placeholder="Username"
                 placeholderTextColor="#999"
                 value={username}
-                onChangeText={setUsername}
+                onChangeText={(v) => {
+                  setUsername(v);
+                  setIsUsernameAvailable(null);
+                }}
+                onBlur={async () => {
+                  const v = username.trim();
+                  if (v.length >= 3) {
+                    setIsUsernameChecking(true);
+                    try {
+                      const res = await api.auth.checkUsername(v);
+                      setIsUsernameAvailable(res.available);
+                      if (!res.available) setErrorMessage('Username is already taken');
+                    } catch (_e) {
+                      setErrorMessage('Could not verify username availability');
+                    } finally {
+                      setIsUsernameChecking(false);
+                    }
+                  }
+                }}
                 autoCapitalize="none"
                 autoCorrect={false}
                 editable={!isLoading}
@@ -365,7 +388,26 @@ export default function RegisterScreen() {
                 placeholder="Email"
                 placeholderTextColor="#999"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(v) => {
+                  setEmail(v);
+                  setIsEmailAvailable(null);
+                }}
+                onBlur={async () => {
+                  const v = email.trim();
+                  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                  if (emailRegex.test(v)) {
+                    setIsEmailChecking(true);
+                    try {
+                      const res = await api.auth.checkEmail(v);
+                      setIsEmailAvailable(res.available);
+                      if (!res.available) setErrorMessage('Email is already in use');
+                    } catch (_e) {
+                      setErrorMessage('Could not verify email availability');
+                    } finally {
+                      setIsEmailChecking(false);
+                    }
+                  }
+                }}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 autoCorrect={false}
@@ -438,10 +480,21 @@ export default function RegisterScreen() {
               </View>
             ) : null}
 
+            <View style={{ marginBottom: 8 }}>
+              {isUsernameChecking && <Text style={{ color: '#666' }}>Checking username...</Text>}
+              {isUsernameAvailable === false && <Text style={{ color: '#DC2626' }}>Username is taken</Text>}
+              {isUsernameAvailable === true && <Text style={{ color: '#16A34A' }}>Username is available</Text>}
+            </View>
+            <View style={{ marginBottom: 8 }}>
+              {isEmailChecking && <Text style={{ color: '#666' }}>Checking email...</Text>}
+              {isEmailAvailable === false && <Text style={{ color: '#DC2626' }}>Email already in use</Text>}
+              {isEmailAvailable === true && <Text style={{ color: '#16A34A' }}>Email available</Text>}
+            </View>
+
             <TouchableOpacity
               style={[styles.registerButton, isLoading && styles.registerButtonDisabled]}
               onPress={handleRegister}
-              disabled={isLoading}
+              disabled={isLoading || isUsernameAvailable === false || isEmailAvailable === false}
             >
               {isLoading ? (
                 <ActivityIndicator color="#FFF" />

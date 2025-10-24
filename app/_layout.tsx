@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, usePathname, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { Platform, View, Text, ActivityIndicator } from "react-native";
+import { Platform, View, Text } from "react-native";
 import { trpc, trpcClient } from "@/lib/trpc";
-import { AuthProvider } from "@/lib/auth-context";
+import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { SocialProvider } from "@/lib/social-context";
 
 if (Platform.OS === 'web') {
   try {
@@ -35,6 +36,33 @@ function RootLayoutNav() {
   );
 }
 
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const requiresVerification = useMemo(() => {
+    if (!user) return false;
+    return !(user.email_verified && user.phone_verified);
+  }, [user]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!user && pathname !== '/login' && pathname !== '/register') {
+        router.replace('/login');
+      } else if (user && requiresVerification && pathname !== '/verify') {
+        router.replace('/verify');
+      }
+    }
+  }, [isLoading, user, requiresVerification, pathname]);
+
+  if (isLoading) return null;
+  if (!user && pathname !== '/login' && pathname !== '/register') return null;
+  if (user && requiresVerification && pathname !== '/verify') return null;
+
+  return <>{children}</>;
+}
+
 export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,9 +73,7 @@ export default function RootLayout() {
         console.log('[RootLayout] Starting app initialization...');
         await SplashScreen.preventAutoHideAsync();
         console.log('[RootLayout] Splash screen prevented from hiding');
-        
         await new Promise(resolve => setTimeout(resolve, 100));
-        
         console.log('[RootLayout] App ready, hiding splash screen');
         await SplashScreen.hideAsync();
         setIsReady(true);
@@ -57,7 +83,7 @@ export default function RootLayout() {
         setIsReady(true);
       }
     };
-    
+
     prepare();
   }, []);
 
@@ -78,9 +104,13 @@ export default function RootLayout() {
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <RootLayoutNav />
-          </GestureHandlerRootView>
+          <SocialProvider>
+            <GestureHandlerRootView style={{ flex: 1 }}>
+              <AuthGate>
+                <RootLayoutNav />
+              </AuthGate>
+            </GestureHandlerRootView>
+          </SocialProvider>
         </AuthProvider>
       </QueryClientProvider>
     </trpc.Provider>
