@@ -20,7 +20,7 @@ const getBaseUrl = () => {
 };
 
 const baseUrl = getBaseUrl();
-const trpcUrl = `${baseUrl}/trpc`;
+const trpcUrl = `${baseUrl}/api/trpc`;
 console.log('[tRPC] Full tRPC URL:', trpcUrl);
 
 export const trpcClient = trpc.createClient({
