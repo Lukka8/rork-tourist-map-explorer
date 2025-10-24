@@ -1,15 +1,13 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { trpc, trpcClient } from './trpc';
+import { api } from './api-client';
 
 interface User {
   id: number;
-  username: string;
-  firstname: string;
-  lastname: string;
+  name: string;
   email: string;
-  phone: string;
+  phone: string | null;
   email_verified: boolean;
   phone_verified: boolean;
 }
@@ -19,17 +17,14 @@ interface AuthContextValue {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
 }
 
 interface RegisterData {
-  username: string;
-  firstname: string;
-  lastname: string;
+  name: string;
   email: string;
-  phone: string;
   password: string;
 }
 
@@ -40,15 +35,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loginMutation = trpc.auth.login.useMutation();
-  const registerMutation = trpc.auth.register.useMutation();
-
-  const fetchUser = async (authToken: string) => {
+  const fetchUser = async () => {
     try {
       console.log('[Auth] Fetching user with token');
-      const response = await trpcClient.auth.me.query({ token: authToken });
-      console.log('[Auth] User fetched successfully:', response.user.username);
-      setUser(response.user);
+      const userData = await api.auth.me();
+      console.log('[Auth] User fetched successfully:', userData.email);
+      setUser(userData);
     } catch (error) {
       console.error('[Auth] Error fetching user:', error);
       setToken(null);
@@ -65,7 +57,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         if (storedToken) {
           console.log('[Auth] Found stored token, fetching user');
           setToken(storedToken);
-          await fetchUser(storedToken);
+          await fetchUser();
         } else {
           console.log('[Auth] No stored token found');
         }
@@ -80,14 +72,19 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     initAuth();
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = async (email: string, password: string) => {
     try {
-      console.log('[Auth] Attempting login for:', username);
-      const response = await loginMutation.mutateAsync({ username, password });
+      console.log('[Auth] Attempting login for:', email);
+      const response = await api.auth.login({ email, password });
       console.log('[Auth] Login successful');
       await AsyncStorage.setItem(TOKEN_KEY, response.token);
       setToken(response.token);
-      setUser(response.user);
+      setUser({
+        ...response.user,
+        phone: null,
+        email_verified: false,
+        phone_verified: false,
+      });
     } catch (error) {
       console.error('[Auth] Login error:', error);
       throw error;
@@ -96,12 +93,17 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const register = async (data: RegisterData) => {
     try {
-      console.log('[Auth] Attempting registration for:', data.username);
-      const response = await registerMutation.mutateAsync(data);
+      console.log('[Auth] Attempting registration for:', data.email);
+      const response = await api.auth.register(data);
       console.log('[Auth] Registration successful');
       await AsyncStorage.setItem(TOKEN_KEY, response.token);
       setToken(response.token);
-      setUser(response.user);
+      setUser({
+        ...response.user,
+        phone: null,
+        email_verified: false,
+        phone_verified: false,
+      });
     } catch (error) {
       console.error('[Auth] Register error:', error);
       throw error;
