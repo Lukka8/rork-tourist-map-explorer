@@ -460,6 +460,85 @@ app.post('/api/verification/verify-phone', authMiddleware, async (req, res) => {
   }
 });
 
+// Update email with uniqueness check and resend code
+app.post('/api/auth/update-email', authMiddleware, async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    if (!email) return res.status(400).json({ error: 'Missing email' });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(String(email))) return res.status(400).json({ error: 'Invalid email' });
+
+    const [[current]] = await pool.query('SELECT id FROM users WHERE id = ? LIMIT 1', [req.userId]);
+    if (!current) return res.status(404).json({ error: 'User not found' });
+
+    const [dupes] = await pool.query('SELECT id FROM users WHERE email = ? AND id <> ? LIMIT 1', [email, req.userId]);
+    if (dupes.length > 0) return res.status(400).json({ error: 'Email already in use' });
+
+    await pool.query('UPDATE users SET email = ?, email_verified = 0 WHERE id = ?', [email, req.userId]);
+    await pool.query('DELETE FROM verification_codes WHERE user_id = ? AND type = ? AND verified = 0', [req.userId, 'email']);
+
+    try {
+      const code = await createCode(req.userId, 'email');
+      if (hasEmailSender) {
+        await resend.emails.send({
+          from: process.env.RESEND_FROM_EMAIL,
+          to: email,
+          subject: 'Your verification code',
+          text: `Your verification code is ${code}. It expires in 10 minutes.`,
+        });
+      } else {
+        console.log('[Verification] Email code (dev mode):', code);
+      }
+    } catch (e) {
+      console.error('[Auth] update-email send code error:', e);
+    }
+
+    const [[updated]] = await pool.query('SELECT id, email, username, firstname, lastname, phone, email_verified, phone_verified FROM users WHERE id = ? LIMIT 1', [req.userId]);
+    res.json({ success: true, message: 'Email updated. Please verify.', user: { ...updated, email_verified: !!updated.email_verified, phone_verified: !!updated.phone_verified } });
+  } catch (error) {
+    console.error('[Auth] Update email error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update phone with uniqueness check and resend code
+app.post('/api/auth/update-phone', authMiddleware, async (req, res) => {
+  try {
+    const { phone } = req.body || {};
+    if (!phone) return res.status(400).json({ error: 'Missing phone' });
+
+    const [[current]] = await pool.query('SELECT id FROM users WHERE id = ? LIMIT 1', [req.userId]);
+    if (!current) return res.status(404).json({ error: 'User not found' });
+
+    const [dupes] = await pool.query('SELECT id FROM users WHERE phone = ? AND id <> ? LIMIT 1', [phone, req.userId]);
+    if (dupes.length > 0) return res.status(400).json({ error: 'Phone already in use' });
+
+    await pool.query('UPDATE users SET phone = ?, phone_verified = 0 WHERE id = ?', [phone, req.userId]);
+    await pool.query('DELETE FROM verification_codes WHERE user_id = ? AND type = ? AND verified = 0', [req.userId, 'phone']);
+
+    try {
+      const code = await createCode(req.userId, 'phone');
+      if (hasTwilio && twilioClient) {
+        await twilioClient.messages.create({
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: phone,
+          body: `Your verification code is ${code}. It expires in 10 minutes.`,
+        });
+      } else {
+        console.log('[Verification] Phone code (dev mode):', code);
+      }
+    } catch (e) {
+      console.error('[Auth] update-phone send code error:', e);
+    }
+
+    const [[updated]] = await pool.query('SELECT id, email, username, firstname, lastname, phone, email_verified, phone_verified FROM users WHERE id = ? LIMIT 1', [req.userId]);
+    res.json({ success: true, message: 'Phone updated. Please verify.', user: { ...updated, email_verified: !!updated.email_verified, phone_verified: !!updated.phone_verified } });
+  } catch (error) {
+    console.error('[Auth] Update phone error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 initDB().then(() => {
   app.listen(PORT, () => {
     console.log(`[Server] Running on http://localhost:${PORT}`);

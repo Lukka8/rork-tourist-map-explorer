@@ -27,6 +27,10 @@ export default function VerifyScreen() {
   const [isSendingPhone, setIsSendingPhone] = useState(false);
   const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
   const [isVerifyingPhone, setIsVerifyingPhone] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
+  const [isUpdatingPhone, setIsUpdatingPhone] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -257,6 +261,76 @@ export default function VerifyScreen() {
             </View>
           </View>
 
+          <View style={{ marginTop: 24, gap: 16 }}>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#1a1a1a' }}>Made a mistake?</Text>
+            <View style={{ gap: 12 }}>
+              <View>
+                <Text style={{ marginBottom: 8, color: '#666' }}>Change Email</Text>
+                <TextInput
+                  style={styles.inputInline}
+                  placeholder="Enter new email"
+                  placeholderTextColor="#999"
+                  value={newEmail}
+                  onChangeText={setNewEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+                <TouchableOpacity
+                  style={[styles.verifyButton, isUpdatingEmail && styles.buttonDisabled]}
+                  onPress={async () => {
+                    if (!newEmail) return;
+                    setIsUpdatingEmail(true);
+                    try {
+                      const res = await api.auth.updateEmail(newEmail);
+                      await refreshUser();
+                      setNewEmail('');
+                      Alert.alert('Updated', res.message);
+                    } catch (e: unknown) {
+                      const m = e && typeof e === 'object' && 'message' in e ? String((e as any).message) : 'Failed to update email';
+                      Alert.alert('Error', m);
+                    } finally {
+                      setIsUpdatingEmail(false);
+                    }
+                  }}
+                >
+                  {isUpdatingEmail ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={styles.verifyButtonText}>Save Email</Text>}
+                </TouchableOpacity>
+              </View>
+
+              <View>
+                <Text style={{ marginBottom: 8, color: '#666' }}>Change Phone</Text>
+                <TextInput
+                  style={styles.inputInline}
+                  placeholder="Enter new phone"
+                  placeholderTextColor="#999"
+                  value={newPhone}
+                  onChangeText={setNewPhone}
+                  keyboardType="phone-pad"
+                />
+                <TouchableOpacity
+                  style={[styles.verifyButton, isUpdatingPhone && styles.buttonDisabled]}
+                  onPress={async () => {
+                    if (!newPhone) return;
+                    setIsUpdatingPhone(true);
+                    try {
+                      const res = await api.auth.updatePhone(newPhone);
+                      await refreshUser();
+                      setNewPhone('');
+                      Alert.alert('Updated', res.message);
+                    } catch (e: unknown) {
+                      const m = e && typeof e === 'object' && 'message' in e ? String((e as any).message) : 'Failed to update phone';
+                      Alert.alert('Error', m);
+                    } finally {
+                      setIsUpdatingPhone(false);
+                    }
+                  }}
+                >
+                  {isUpdatingPhone ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={styles.verifyButtonText}>Save Phone</Text>}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
           <TouchableOpacity
             style={[
               styles.continueButton,
@@ -382,6 +456,15 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '700' as const,
+  },
+  inputInline: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 16,
+    borderWidth: 2,
+    borderColor: '#E8E8E8',
+    marginBottom: 12,
   },
   buttonDisabled: {
     opacity: 0.5,

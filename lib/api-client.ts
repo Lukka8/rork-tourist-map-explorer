@@ -73,6 +73,24 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ email }),
       }),
+
+    updateEmail: (email: string) =>
+      apiFetch<{ success: boolean; message: string; user: { id: number; username: string; firstname: string; lastname: string; email: string; phone: string; email_verified: boolean; phone_verified: boolean } }>(
+        '/api/auth/update-email',
+        {
+          method: 'POST',
+          body: JSON.stringify({ email }),
+        }
+      ),
+
+    updatePhone: (phone: string) =>
+      apiFetch<{ success: boolean; message: string; user: { id: number; username: string; firstname: string; lastname: string; email: string; phone: string; email_verified: boolean; phone_verified: boolean } }>(
+        '/api/auth/update-phone',
+        {
+          method: 'POST',
+          body: JSON.stringify({ phone }),
+        }
+      ),
   },
   
   favorites: {
@@ -128,10 +146,9 @@ export const api = {
         method: 'POST',
       }),
     
-    sendPhoneCode: (phone: string) =>
+    sendPhoneCode: (_phone: string) =>
       apiFetch<{ success: boolean; message: string }>('/api/verification/send-phone-code', {
         method: 'POST',
-        body: JSON.stringify({ phone }),
       }),
     
     verifyEmail: (code: string) =>
