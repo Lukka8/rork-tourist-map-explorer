@@ -17,7 +17,7 @@ import { LogIn, User, Lock } from 'lucide-react-native';
 import { useAuth } from '@/lib/auth-context';
 
 export default function LoginScreen() {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
@@ -28,16 +28,16 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     console.log('[LoginScreen] Handle login called');
     
-    if (!username || !password) {
+    if (!email || !password) {
       console.log('[LoginScreen] Missing credentials');
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
-    console.log('[LoginScreen] Starting login for:', username);
+    console.log('[LoginScreen] Starting login for:', email);
     setIsLoading(true);
     try {
-      await login(username, password);
+      await login(email, password);
       console.log('[LoginScreen] Login successful, navigating to home');
       router.replace('/');
     } catch (error) {
@@ -74,11 +74,12 @@ export default function LoginScreen() {
               </View>
               <TextInput
                 style={styles.input}
-                placeholder="Username"
+                placeholder="Email"
                 placeholderTextColor="#999"
-                value={username}
-                onChangeText={setUsername}
+                value={email}
+                onChangeText={setEmail}
                 autoCapitalize="none"
+                keyboardType="email-address"
                 autoCorrect={false}
                 editable={!isLoading}
               />

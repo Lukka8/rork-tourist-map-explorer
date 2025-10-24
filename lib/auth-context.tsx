@@ -5,9 +5,11 @@ import { api } from './api-client';
 
 interface User {
   id: number;
-  name: string;
+  username: string;
+  firstname: string;
+  lastname: string;
   email: string;
-  phone: string | null;
+  phone: string;
   email_verified: boolean;
   phone_verified: boolean;
 }
@@ -23,8 +25,11 @@ interface AuthContextValue {
 }
 
 interface RegisterData {
-  name: string;
+  username: string;
+  firstname: string;
+  lastname: string;
   email: string;
+  phone: string;
   password: string;
 }
 
@@ -79,12 +84,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       console.log('[Auth] Login successful');
       await AsyncStorage.setItem(TOKEN_KEY, response.token);
       setToken(response.token);
-      setUser({
-        ...response.user,
-        phone: null,
-        email_verified: false,
-        phone_verified: false,
-      });
+      setUser(response.user);
     } catch (error) {
       console.error('[Auth] Login error:', error);
       throw error;
@@ -98,12 +98,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       console.log('[Auth] Registration successful');
       await AsyncStorage.setItem(TOKEN_KEY, response.token);
       setToken(response.token);
-      setUser({
-        ...response.user,
-        phone: null,
-        email_verified: false,
-        phone_verified: false,
-      });
+      setUser(response.user);
     } catch (error) {
       console.error('[Auth] Register error:', error);
       throw error;

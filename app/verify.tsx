@@ -11,8 +11,8 @@ import {
 import { useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Mail, Phone, CheckCircle2 } from 'lucide-react-native';
-import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/lib/auth-context';
+import { api } from '@/lib/api-client';
 
 export default function VerifyScreen() {
   const { user } = useAuth();
@@ -23,10 +23,10 @@ export default function VerifyScreen() {
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [isPhoneVerified, setIsPhoneVerified] = useState(false);
 
-  const sendEmailMutation = trpc.verification.sendEmailCode.useMutation();
-  const sendPhoneMutation = trpc.verification.sendPhoneCode.useMutation();
-  const verifyEmailMutation = trpc.verification.verifyEmail.useMutation();
-  const verifyPhoneMutation = trpc.verification.verifyPhone.useMutation();
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [isSendingPhone, setIsSendingPhone] = useState(false);
+  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
+  const [isVerifyingPhone, setIsVerifyingPhone] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -37,27 +37,33 @@ export default function VerifyScreen() {
 
   const handleSendEmailCode = async () => {
     if (!user) return;
+    setIsSendingEmail(true);
     try {
-      await sendEmailMutation.mutateAsync({ userId: user.id });
-      Alert.alert('Success', 'Verification code sent to your email');
+      const result = await api.verification.sendEmailCode();
+      Alert.alert('Success', result.message || 'Verification code sent to your email');
     } catch (error: unknown) {
       const message = error && typeof error === 'object' && 'message' in error 
         ? String(error.message)
         : 'Failed to send code';
       Alert.alert('Error', message);
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
   const handleSendPhoneCode = async () => {
     if (!user) return;
+    setIsSendingPhone(true);
     try {
-      await sendPhoneMutation.mutateAsync({ userId: user.id });
-      Alert.alert('Success', 'Verification code sent to your phone');
+      const result = await api.verification.sendPhoneCode(user.phone);
+      Alert.alert('Success', result.message || 'Verification code sent to your phone');
     } catch (error: unknown) {
       const message = error && typeof error === 'object' && 'message' in error 
         ? String(error.message)
         : 'Failed to send code';
       Alert.alert('Error', message);
+    } finally {
+      setIsSendingPhone(false);
     }
   };
 
@@ -66,16 +72,19 @@ export default function VerifyScreen() {
       Alert.alert('Error', 'Please enter a 6-digit code');
       return;
     }
+    setIsVerifyingEmail(true);
     try {
-      await verifyEmailMutation.mutateAsync({ userId: user.id, code: emailCode });
+      const result = await api.verification.verifyEmail(emailCode);
       setIsEmailVerified(true);
       setEmailCode('');
-      Alert.alert('Success', 'Email verified successfully!');
+      Alert.alert('Success', result.message || 'Email verified successfully!');
     } catch (error: unknown) {
       const message = error && typeof error === 'object' && 'message' in error 
         ? String(error.message)
         : 'Invalid or expired code';
       Alert.alert('Error', message);
+    } finally {
+      setIsVerifyingEmail(false);
     }
   };
 
@@ -84,16 +93,19 @@ export default function VerifyScreen() {
       Alert.alert('Error', 'Please enter a 6-digit code');
       return;
     }
+    setIsVerifyingPhone(true);
     try {
-      await verifyPhoneMutation.mutateAsync({ userId: user.id, code: phoneCode });
+      const result = await api.verification.verifyPhone(phoneCode);
       setIsPhoneVerified(true);
       setPhoneCode('');
-      Alert.alert('Success', 'Phone verified successfully!');
+      Alert.alert('Success', result.message || 'Phone verified successfully!');
     } catch (error: unknown) {
       const message = error && typeof error === 'object' && 'message' in error 
         ? String(error.message)
         : 'Invalid or expired code';
       Alert.alert('Error', message);
+    } finally {
+      setIsVerifyingPhone(false);
     }
   };
 
@@ -145,16 +157,16 @@ export default function VerifyScreen() {
                     onChangeText={setEmailCode}
                     keyboardType="number-pad"
                     maxLength={6}
-                    editable={!verifyEmailMutation.isPending}
+                    editable={!isVerifyingEmail}
                   />
 
                   <View style={styles.buttonRow}>
                     <TouchableOpacity
-                      style={[styles.sendButton, sendEmailMutation.isPending && styles.buttonDisabled]}
+                      style={[styles.sendButton, isSendingEmail && styles.buttonDisabled]}
                       onPress={handleSendEmailCode}
-                      disabled={sendEmailMutation.isPending}
+                      disabled={isSendingEmail}
                     >
-                      {sendEmailMutation.isPending ? (
+                      {isSendingEmail ? (
                         <ActivityIndicator size="small" color="#007AFF" />
                       ) : (
                         <Text style={styles.sendButtonText}>Send Code</Text>
@@ -162,11 +174,11 @@ export default function VerifyScreen() {
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.verifyButton, verifyEmailMutation.isPending && styles.buttonDisabled]}
+                      style={[styles.verifyButton, isVerifyingEmail && styles.buttonDisabled]}
                       onPress={handleVerifyEmail}
-                      disabled={verifyEmailMutation.isPending || emailCode.length !== 6}
+                      disabled={isVerifyingEmail || emailCode.length !== 6}
                     >
-                      {verifyEmailMutation.isPending ? (
+                      {isVerifyingEmail ? (
                         <ActivityIndicator size="small" color="#FFF" />
                       ) : (
                         <Text style={styles.verifyButtonText}>Verify</Text>
@@ -202,16 +214,16 @@ export default function VerifyScreen() {
                     onChangeText={setPhoneCode}
                     keyboardType="number-pad"
                     maxLength={6}
-                    editable={!verifyPhoneMutation.isPending}
+                    editable={!isVerifyingPhone}
                   />
 
                   <View style={styles.buttonRow}>
                     <TouchableOpacity
-                      style={[styles.sendButton, sendPhoneMutation.isPending && styles.buttonDisabled]}
+                      style={[styles.sendButton, isSendingPhone && styles.buttonDisabled]}
                       onPress={handleSendPhoneCode}
-                      disabled={sendPhoneMutation.isPending}
+                      disabled={isSendingPhone}
                     >
-                      {sendPhoneMutation.isPending ? (
+                      {isSendingPhone ? (
                         <ActivityIndicator size="small" color="#007AFF" />
                       ) : (
                         <Text style={styles.sendButtonText}>Send Code</Text>
@@ -219,11 +231,11 @@ export default function VerifyScreen() {
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.verifyButton, verifyPhoneMutation.isPending && styles.buttonDisabled]}
+                      style={[styles.verifyButton, isVerifyingPhone && styles.buttonDisabled]}
                       onPress={handleVerifyPhone}
-                      disabled={verifyPhoneMutation.isPending || phoneCode.length !== 6}
+                      disabled={isVerifyingPhone || phoneCode.length !== 6}
                     >
-                      {verifyPhoneMutation.isPending ? (
+                      {isVerifyingPhone ? (
                         <ActivityIndicator size="small" color="#FFF" />
                       ) : (
                         <Text style={styles.verifyButtonText}>Verify</Text>

@@ -47,20 +47,20 @@ async function apiFetch<T = unknown>(endpoint: string, options: RequestInit = {}
 
 export const api = {
   auth: {
-    register: (data: { email: string; password: string; name: string }) =>
-      apiFetch<{ token: string; user: { id: number; email: string; name: string } }>('/api/auth/register', {
+    register: (data: { username: string; firstname: string; lastname: string; email: string; phone: string; password: string }) =>
+      apiFetch<{ token: string; user: { id: number; username: string; firstname: string; lastname: string; email: string; phone: string; email_verified: boolean; phone_verified: boolean } }>('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
     
     login: (data: { email: string; password: string }) =>
-      apiFetch<{ token: string; user: { id: number; email: string; name: string } }>('/api/auth/login', {
+      apiFetch<{ token: string; user: { id: number; username: string; firstname: string; lastname: string; email: string; phone: string; email_verified: boolean; phone_verified: boolean } }>('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
     
     me: () =>
-      apiFetch<{ id: number; email: string; name: string; phone: string | null; email_verified: boolean; phone_verified: boolean }>('/api/auth/me'),
+      apiFetch<{ id: number; username: string; firstname: string; lastname: string; email: string; phone: string; email_verified: boolean; phone_verified: boolean }>('/api/auth/me'),
   },
   
   favorites: {
