@@ -7,6 +7,13 @@ import { sendEmailCodeProcedure } from "./routes/verification/send-email-code/ro
 import { sendPhoneCodeProcedure } from "./routes/verification/send-phone-code/route";
 import { verifyEmailProcedure } from "./routes/verification/verify-email/route";
 import { verifyPhoneProcedure } from "./routes/verification/verify-phone/route";
+import { addFavoriteProcedure } from "./routes/favorites/add/route";
+import { removeFavoriteProcedure } from "./routes/favorites/remove/route";
+import { listFavoritesProcedure } from "./routes/favorites/list/route";
+import { addVisitedProcedure } from "./routes/visited/add/route";
+import { listVisitedProcedure } from "./routes/visited/list/route";
+import { addReviewProcedure } from "./routes/reviews/add/route";
+import { listReviewsProcedure } from "./routes/reviews/list/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -22,6 +29,19 @@ export const appRouter = createTRPCRouter({
     sendPhoneCode: sendPhoneCodeProcedure,
     verifyEmail: verifyEmailProcedure,
     verifyPhone: verifyPhoneProcedure,
+  }),
+  favorites: createTRPCRouter({
+    add: addFavoriteProcedure,
+    remove: removeFavoriteProcedure,
+    list: listFavoritesProcedure,
+  }),
+  visited: createTRPCRouter({
+    add: addVisitedProcedure,
+    list: listVisitedProcedure,
+  }),
+  reviews: createTRPCRouter({
+    add: addReviewProcedure,
+    list: listReviewsProcedure,
   }),
 });
 

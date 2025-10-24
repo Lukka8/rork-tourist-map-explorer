@@ -30,3 +30,37 @@ CREATE TABLE IF NOT EXISTS verification_codes (
   INDEX idx_user_type (user_id, type),
   INDEX idx_expires (expires_at)
 );
+
+CREATE TABLE IF NOT EXISTS favorites (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  attraction_id VARCHAR(50) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_user_attraction (user_id, attraction_id),
+  INDEX idx_user_id (user_id)
+);
+
+CREATE TABLE IF NOT EXISTS visited (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  attraction_id VARCHAR(50) NOT NULL,
+  visited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_user_visited (user_id, attraction_id),
+  INDEX idx_user_id (user_id)
+);
+
+CREATE TABLE IF NOT EXISTS reviews (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  attraction_id VARCHAR(50) NOT NULL,
+  rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  comment TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_user_review (user_id, attraction_id),
+  INDEX idx_attraction_id (attraction_id),
+  INDEX idx_user_id (user_id)
+);

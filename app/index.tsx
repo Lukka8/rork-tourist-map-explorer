@@ -12,12 +12,13 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import { Image } from 'expo-image';
-import { MapPin, X, Navigation, Layers, LogOut } from 'lucide-react-native';
+import { MapPin, X, Navigation, Layers, LogOut, Heart, Search, Filter, Star, CheckCircle2 } from 'lucide-react-native';
 import { NYC_ATTRACTIONS, Attraction } from '@/constants/attractions';
 import { StatusBar } from 'expo-status-bar';
 import { MapView, Marker, Polyline, UserLocationMarker, type Region as MapRegion, type MapRef } from '@/components/MapComponents';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'expo-router';
+import { trpc } from '@/lib/trpc';
 
 const { height } = Dimensions.get('window');
 
@@ -37,6 +38,57 @@ export default function MapScreen() {
   const [mapType, setMapType] = useState<'standard' | 'satellite' | 'hybrid'>('standard');
   const [locationPermission, setLocationPermission] = useState<boolean | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [showFilters, setShowFilters] = useState(false);
+
+  const favoritesQuery = trpc.favorites.list.useQuery(undefined, { enabled: isAuthenticated });
+  const visitedQuery = trpc.visited.list.useQuery(undefined, { enabled: isAuthenticated });
+  const addFavoriteMutation = trpc.favorites.add.useMutation();
+  const removeFavoriteMutation = trpc.favorites.remove.useMutation();
+  const addVisitedMutation = trpc.visited.add.useMutation();
+
+  const favorites = favoritesQuery.data?.favorites || [];
+  const visited = visitedQuery.data?.visited || [];
+
+  const isFavorite = (attractionId: string) => 
+    favorites.some(f => f.attraction_id === attractionId);
+  
+  const isVisited = (attractionId: string) => 
+    visited.some(v => v.attraction_id === attractionId);
+
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  const getAttractionDistance = (attraction: Attraction) => {
+    if (!userLocation) return null;
+    return calculateDistance(
+      userLocation.latitude,
+      userLocation.longitude,
+      attraction.coordinate.latitude,
+      attraction.coordinate.longitude
+    );
+  };
+
+  const filteredAttractions = NYC_ATTRACTIONS.filter(attraction => {
+    const matchesSearch = attraction.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         attraction.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || attraction.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  }).sort((a, b) => {
+    const distA = getAttractionDistance(a) || Infinity;
+    const distB = getAttractionDistance(b) || Infinity;
+    return distA - distB;
+  });
 
   const mapRef = useRef<MapRef>(null);
   const slideAnim = useRef(new Animated.Value(height)).current;
@@ -171,6 +223,23 @@ export default function MapScreen() {
     ]);
   };
 
+  const toggleFavorite = async (attractionId: string) => {
+    if (isFavorite(attractionId)) {
+      await removeFavoriteMutation.mutateAsync({ attractionId });
+      favoritesQuery.refetch();
+    } else {
+      await addFavoriteMutation.mutateAsync({ attractionId });
+      favoritesQuery.refetch();
+    }
+  };
+
+  const toggleVisited = async (attractionId: string) => {
+    if (!isVisited(attractionId)) {
+      await addVisitedMutation.mutateAsync({ attractionId });
+      visitedQuery.refetch();
+    }
+  };
+
   if (isAuthLoading || isLoadingLocation) {
     return (
       <View style={styles.loadingContainer}>
@@ -222,7 +291,7 @@ export default function MapScreen() {
       >
         {userLocation && <UserLocationMarker coordinate={userLocation} />}
         
-        {NYC_ATTRACTIONS.map((attraction) => (
+        {filteredAttractions.map((attraction) => (
           <Marker
             key={attraction.id}
             coordinate={attraction.coordinate}
@@ -272,15 +341,59 @@ export default function MapScreen() {
       <View style={styles.headerContainer}>
         <View style={styles.header}>
           <View style={styles.headerTextContainer}>
-            <Text style={styles.headerTitle}>Tourist Map</Text>
+            <Text style={styles.headerTitle}>Explore NYC</Text>
             <Text style={styles.headerSubtitle}>
-              Welcome, {user?.firstname}! {NYC_ATTRACTIONS.length} attractions nearby
+              {filteredAttractions.length} {filteredAttractions.length === 1 ? 'attraction' : 'attractions'} found
             </Text>
           </View>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <LogOut size={20} color="#FF3B30" />
           </TouchableOpacity>
         </View>
+        
+        <View style={styles.searchContainer}>
+          <View style={styles.searchInputWrapper}>
+            <Search size={20} color="#999" style={styles.searchIcon} />
+            <Text 
+              style={styles.searchInput}
+              onPress={() => Alert.alert('Search', 'Search feature - type to filter attractions', [
+                { text: 'OK' }
+              ])}
+            >
+              {searchQuery || 'Search attractions...'}
+            </Text>
+          </View>
+          <TouchableOpacity 
+            style={[styles.filterButton, showFilters && styles.filterButtonActive]} 
+            onPress={() => setShowFilters(!showFilters)}
+          >
+            <Filter size={20} color={showFilters ? '#FFF' : '#007AFF'} />
+          </TouchableOpacity>
+        </View>
+
+        {showFilters && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryFilter}>
+            {['all', 'landmark', 'museum', 'park', 'cultural'].map((category) => (
+              <TouchableOpacity
+                key={category}
+                style={[
+                  styles.categoryChip,
+                  selectedCategory === category && styles.categoryChipActive,
+                ]}
+                onPress={() => setSelectedCategory(category)}
+              >
+                <Text
+                  style={[
+                    styles.categoryChipText,
+                    selectedCategory === category && styles.categoryChipTextActive,
+                  ]}
+                >
+                  {category.charAt(0).toUpperCase() + category.slice(1)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
       </View>
 
       {selectedAttraction && (
@@ -310,6 +423,27 @@ export default function MapScreen() {
 
               <Text style={styles.cardTitle}>{selectedAttraction.name}</Text>
               
+              <View style={styles.statsRow}>
+                {userLocation && (
+                  <View style={styles.statItem}>
+                    <Navigation size={16} color="#007AFF" />
+                    <Text style={styles.statText}>
+                      {getAttractionDistance(selectedAttraction)?.toFixed(1)} km
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.statItem}>
+                  <Star size={16} color="#FFD700" fill="#FFD700" />
+                  <Text style={styles.statText}>4.5</Text>
+                </View>
+                {isVisited(selectedAttraction.id) && (
+                  <View style={styles.visitedBadge}>
+                    <CheckCircle2 size={16} color="#34C759" />
+                    <Text style={styles.visitedText}>Visited</Text>
+                  </View>
+                )}
+              </View>
+
               <View style={styles.factContainer}>
                 <View style={styles.factIcon}>
                   <Text style={styles.factEmoji}>💡</Text>
@@ -320,6 +454,36 @@ export default function MapScreen() {
               <Text style={styles.cardDescription}>
                 {selectedAttraction.description}
               </Text>
+
+              <View style={styles.actionButtons}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.favoriteButton, isFavorite(selectedAttraction.id) && styles.favoriteButtonActive]}
+                  onPress={() => toggleFavorite(selectedAttraction.id)}
+                >
+                  <Heart 
+                    size={20} 
+                    color={isFavorite(selectedAttraction.id) ? '#FFF' : '#FF3B30'}
+                    fill={isFavorite(selectedAttraction.id) ? '#FFF' : 'none'}
+                  />
+                  <Text style={[styles.actionButtonText, isFavorite(selectedAttraction.id) && styles.actionButtonTextActive]}>
+                    {isFavorite(selectedAttraction.id) ? 'Saved' : 'Save'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.visitedButton, isVisited(selectedAttraction.id) && styles.visitedButtonActive]}
+                  onPress={() => toggleVisited(selectedAttraction.id)}
+                  disabled={isVisited(selectedAttraction.id)}
+                >
+                  <CheckCircle2 
+                    size={20} 
+                    color={isVisited(selectedAttraction.id) ? '#FFF' : '#34C759'}
+                  />
+                  <Text style={[styles.actionButtonText, isVisited(selectedAttraction.id) && styles.actionButtonTextActive]}>
+                    {isVisited(selectedAttraction.id) ? 'Visited' : 'Check In'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
               <TouchableOpacity
                 style={styles.directionsButton}
@@ -672,5 +836,143 @@ const styles = StyleSheet.create({
   webAttractionFact: {
     fontSize: 14,
     color: '#666',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 16,
+  },
+  searchInputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+  },
+  filterButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  filterButtonActive: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  categoryFilter: {
+    marginTop: 12,
+    maxHeight: 40,
+  },
+  categoryChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#FFF',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  categoryChipActive: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  categoryChipText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#666',
+  },
+  categoryChipTextActive: {
+    color: '#FFF',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 16,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F0F0F0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  statText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#333',
+  },
+  visitedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  visitedText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#34C759',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 6,
+    borderWidth: 2,
+  },
+  favoriteButton: {
+    backgroundColor: '#FFF',
+    borderColor: '#FF3B30',
+  },
+  favoriteButtonActive: {
+    backgroundColor: '#FF3B30',
+    borderColor: '#FF3B30',
+  },
+  visitedButton: {
+    backgroundColor: '#FFF',
+    borderColor: '#34C759',
+  },
+  visitedButtonActive: {
+    backgroundColor: '#34C759',
+    borderColor: '#34C759',
+  },
+  actionButtonText: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: '#333',
+  },
+  actionButtonTextActive: {
+    color: '#FFF',
   },
 });
