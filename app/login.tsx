@@ -22,21 +22,30 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
+  
+  console.log('[LoginScreen] Rendered');
 
   const handleLogin = async () => {
+    console.log('[LoginScreen] Handle login called');
+    
     if (!username || !password) {
+      console.log('[LoginScreen] Missing credentials');
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
+    console.log('[LoginScreen] Starting login for:', username);
     setIsLoading(true);
     try {
       await login(username, password);
+      console.log('[LoginScreen] Login successful, navigating to home');
       router.replace('/');
     } catch (error) {
+      console.error('[LoginScreen] Login failed:', error);
       Alert.alert('Error', 'Invalid username or password');
     } finally {
       setIsLoading(false);
+      console.log('[LoginScreen] Login process complete');
     }
   };
 

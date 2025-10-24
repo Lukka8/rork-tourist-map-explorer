@@ -45,10 +45,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const fetchUser = async (authToken: string) => {
     try {
+      console.log('[Auth] Fetching user with token');
       const response = await trpcClient.auth.me.query({ token: authToken });
+      console.log('[Auth] User fetched successfully:', response.user.username);
       setUser(response.user);
     } catch (error) {
-      console.error('Error fetching user:', error);
+      console.error('[Auth] Error fetching user:', error);
       setToken(null);
       setUser(null);
       await AsyncStorage.removeItem(TOKEN_KEY);
@@ -58,15 +60,20 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   useEffect(() => {
     const initAuth = async () => {
       try {
+        console.log('[Auth] Initializing authentication...');
         const storedToken = await AsyncStorage.getItem(TOKEN_KEY);
         if (storedToken) {
+          console.log('[Auth] Found stored token, fetching user');
           setToken(storedToken);
           await fetchUser(storedToken);
+        } else {
+          console.log('[Auth] No stored token found');
         }
       } catch (error) {
-        console.error('Error loading token:', error);
+        console.error('[Auth] Error loading token:', error);
       } finally {
         setIsLoading(false);
+        console.log('[Auth] Initialization complete');
       }
     };
     
@@ -75,24 +82,28 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const login = async (username: string, password: string) => {
     try {
+      console.log('[Auth] Attempting login for:', username);
       const response = await loginMutation.mutateAsync({ username, password });
+      console.log('[Auth] Login successful');
       await AsyncStorage.setItem(TOKEN_KEY, response.token);
       setToken(response.token);
       setUser(response.user);
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('[Auth] Login error:', error);
       throw error;
     }
   };
 
   const register = async (data: RegisterData) => {
     try {
+      console.log('[Auth] Attempting registration for:', data.username);
       const response = await registerMutation.mutateAsync(data);
+      console.log('[Auth] Registration successful');
       await AsyncStorage.setItem(TOKEN_KEY, response.token);
       setToken(response.token);
       setUser(response.user);
     } catch (error) {
-      console.error('Register error:', error);
+      console.error('[Auth] Register error:', error);
       throw error;
     }
   };

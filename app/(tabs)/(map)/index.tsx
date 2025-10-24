@@ -33,6 +33,8 @@ interface LocationCoords {
 export default function MapScreen() {
   const { isAuthenticated, isLoading: isAuthLoading, user } = useAuth();
   const router = useRouter();
+  
+  console.log('[MapScreen] Render - isAuthenticated:', isAuthenticated, 'isAuthLoading:', isAuthLoading);
   const [userLocation, setUserLocation] = useState<LocationCoords | null>(null);
   const [selectedAttraction, setSelectedAttraction] = useState<Attraction | null>(null);
   const [showDirections, setShowDirections] = useState(false);
@@ -95,25 +97,33 @@ export default function MapScreen() {
   const slideAnim = useRef(new Animated.Value(height)).current;
 
   useEffect(() => {
+    console.log('[MapScreen] Auth effect - isAuthLoading:', isAuthLoading, 'isAuthenticated:', isAuthenticated);
+    
     if (!isAuthLoading && !isAuthenticated) {
+      console.log('[MapScreen] Not authenticated, redirecting to login');
       router.replace('/login');
       return;
     }
     
     if (isAuthenticated) {
+      console.log('[MapScreen] Authenticated, requesting location permission');
       requestLocationPermission();
     }
   }, [isAuthenticated, isAuthLoading]);
 
   const requestLocationPermission = async () => {
     try {
+      console.log('[MapScreen] Requesting location permission');
       const { status } = await Location.requestForegroundPermissionsAsync();
+      console.log('[MapScreen] Location permission status:', status);
       setLocationPermission(status === 'granted');
 
       if (status === 'granted') {
+        console.log('[MapScreen] Getting current position');
         const location = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.High,
         });
+        console.log('[MapScreen] Got location:', location.coords);
         setUserLocation({
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
@@ -133,10 +143,11 @@ export default function MapScreen() {
         );
       }
     } catch (error) {
-      console.error('Error requesting location permission:', error);
+      console.error('[MapScreen] Error requesting location permission:', error);
       Alert.alert('Error', 'Failed to get location permissions');
     } finally {
       setIsLoadingLocation(false);
+      console.log('[MapScreen] Location loading complete');
     }
   };
 
