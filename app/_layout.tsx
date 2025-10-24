@@ -4,7 +4,7 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useMemo, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Platform, View, Text } from "react-native";
-import { trpc, trpcClient } from "@/lib/trpc";
+
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { SocialProvider } from "@/lib/social-context";
 
@@ -101,7 +101,7 @@ export default function RootLayout() {
   }
 
   return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+    
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <SocialProvider>
@@ -113,6 +113,5 @@ export default function RootLayout() {
           </SocialProvider>
         </AuthProvider>
       </QueryClientProvider>
-    </trpc.Provider>
   );
 }
