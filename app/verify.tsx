@@ -15,7 +15,7 @@ import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api-client';
 
 export default function VerifyScreen() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [emailCode, setEmailCode] = useState('');
@@ -75,6 +75,7 @@ export default function VerifyScreen() {
     setIsVerifyingEmail(true);
     try {
       const result = await api.verification.verifyEmail(emailCode);
+      await refreshUser();
       setIsEmailVerified(true);
       setEmailCode('');
       Alert.alert('Success', result.message || 'Email verified successfully!');
@@ -96,6 +97,7 @@ export default function VerifyScreen() {
     setIsVerifyingPhone(true);
     try {
       const result = await api.verification.verifyPhone(phoneCode);
+      await refreshUser();
       setIsPhoneVerified(true);
       setPhoneCode('');
       Alert.alert('Success', result.message || 'Phone verified successfully!');

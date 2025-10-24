@@ -3,6 +3,8 @@ const cors = require('cors');
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { Resend } = require('resend');
+const twilio = require('twilio');
 require('dotenv/config');
 
 const app = express();
@@ -328,10 +330,49 @@ app.get('/api/reviews/list/:attractionId', async (req, res) => {
   }
 });
 
-// Verification endpoints (stubs). Wire to email/SMS providers later.
+// Verification helpers and endpoints
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const hasEmailSender = !!(resend && process.env.RESEND_FROM_EMAIL);
+const hasTwilio = !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER);
+const twilioClient = hasTwilio ? twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN) : null;
+
+const generateCode = () => String(Math.floor(100000 + Math.random() * 900000));
+
+const createCode = async (userId, type) => {
+  const code = generateCode();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+  await pool.query('DELETE FROM verification_codes WHERE user_id = ? AND type = ? AND verified = 0', [userId, type]);
+  await pool.query(
+    'INSERT INTO verification_codes (user_id, type, code, expires_at, verified, created_at) VALUES (?, ?, ?, ?, 0, NOW())',
+    [userId, type, code, expiresAt]
+  );
+  return code;
+};
+
 app.post('/api/verification/send-email-code', authMiddleware, async (req, res) => {
   try {
-    res.json({ success: true, message: 'Email verification not implemented yet' });
+    const [[user]] = await pool.query('SELECT email, email_verified FROM users WHERE id = ? LIMIT 1', [req.userId]);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.email_verified) return res.json({ success: true, message: 'Email already verified' });
+
+    const code = await createCode(req.userId, 'email');
+
+    if (hasEmailSender) {
+      try {
+        await resend.emails.send({
+          from: process.env.RESEND_FROM_EMAIL,
+          to: user.email,
+          subject: 'Your verification code',
+          text: `Your verification code is ${code}. It expires in 10 minutes.`,
+        });
+      } catch (e) {
+        console.error('[Verification] Resend error:', e);
+      }
+    } else {
+      console.log('[Verification] Email code (dev mode):', code);
+    }
+
+    res.json({ success: true, message: 'Verification code sent' });
   } catch (error) {
     console.error('[Verification] Send email error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -340,7 +381,27 @@ app.post('/api/verification/send-email-code', authMiddleware, async (req, res) =
 
 app.post('/api/verification/send-phone-code', authMiddleware, async (req, res) => {
   try {
-    res.json({ success: true, message: 'Phone verification not implemented yet' });
+    const [[user]] = await pool.query('SELECT phone, phone_verified FROM users WHERE id = ? LIMIT 1', [req.userId]);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.phone_verified) return res.json({ success: true, message: 'Phone already verified' });
+
+    const code = await createCode(req.userId, 'phone');
+
+    if (hasTwilio && twilioClient) {
+      try {
+        await twilioClient.messages.create({
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: user.phone,
+          body: `Your verification code is ${code}. It expires in 10 minutes.`,
+        });
+      } catch (e) {
+        console.error('[Verification] Twilio error:', e);
+      }
+    } else {
+      console.log('[Verification] Phone code (dev mode):', code);
+    }
+
+    res.json({ success: true, message: 'Verification code sent' });
   } catch (error) {
     console.error('[Verification] Send phone error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -349,7 +410,24 @@ app.post('/api/verification/send-phone-code', authMiddleware, async (req, res) =
 
 app.post('/api/verification/verify-email', authMiddleware, async (req, res) => {
   try {
-    res.json({ success: true, message: 'Email verification not implemented yet' });
+    const { code } = req.body || {};
+    if (!code || String(code).length !== 6) return res.status(400).json({ error: 'Invalid code' });
+
+    const [rows] = await pool.query(
+      'SELECT id, expires_at, verified FROM verification_codes WHERE user_id = ? AND type = ? AND code = ? ORDER BY created_at DESC LIMIT 1',
+      [req.userId, 'email', String(code)]
+    );
+
+    if (rows.length === 0) return res.status(400).json({ error: 'Code not found' });
+
+    const row = rows[0];
+    if (row.verified) return res.status(400).json({ error: 'Code already used' });
+    if (new Date(row.expires_at).getTime() < Date.now()) return res.status(400).json({ error: 'Code expired' });
+
+    await pool.query('UPDATE verification_codes SET verified = 1 WHERE id = ?', [row.id]);
+    await pool.query('UPDATE users SET email_verified = 1 WHERE id = ?', [req.userId]);
+
+    res.json({ success: true, message: 'Email verified' });
   } catch (error) {
     console.error('[Verification] Verify email error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -358,7 +436,24 @@ app.post('/api/verification/verify-email', authMiddleware, async (req, res) => {
 
 app.post('/api/verification/verify-phone', authMiddleware, async (req, res) => {
   try {
-    res.json({ success: true, message: 'Phone verification not implemented yet' });
+    const { code } = req.body || {};
+    if (!code || String(code).length !== 6) return res.status(400).json({ error: 'Invalid code' });
+
+    const [rows] = await pool.query(
+      'SELECT id, expires_at, verified FROM verification_codes WHERE user_id = ? AND type = ? AND code = ? ORDER BY created_at DESC LIMIT 1',
+      [req.userId, 'phone', String(code)]
+    );
+
+    if (rows.length === 0) return res.status(400).json({ error: 'Code not found' });
+
+    const row = rows[0];
+    if (row.verified) return res.status(400).json({ error: 'Code already used' });
+    if (new Date(row.expires_at).getTime() < Date.now()) return res.status(400).json({ error: 'Code expired' });
+
+    await pool.query('UPDATE verification_codes SET verified = 1 WHERE id = ?', [row.id]);
+    await pool.query('UPDATE users SET phone_verified = 1 WHERE id = ?', [req.userId]);
+
+    res.json({ success: true, message: 'Phone verified' });
   } catch (error) {
     console.error('[Verification] Verify phone error:', error);
     res.status(500).json({ error: 'Internal server error' });

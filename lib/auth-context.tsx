@@ -22,6 +22,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 interface RegisterData {
@@ -51,6 +52,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       setToken(null);
       setUser(null);
       await AsyncStorage.removeItem(TOKEN_KEY);
+      throw error;
     }
   };
 
@@ -115,6 +117,10 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     }
   };
 
+  const refreshUser = async () => {
+    await fetchUser();
+  };
+
   const value: AuthContextValue = {
     user,
     token,
@@ -123,6 +129,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     login,
     register,
     logout,
+    refreshUser,
   };
 
   return value;
