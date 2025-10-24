@@ -22,20 +22,35 @@ import {
 } from 'lucide-react-native';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'expo-router';
-import { trpc } from '@/lib/trpc';
+import { api } from '@/lib/api-client';
 import { NYC_ATTRACTIONS } from '@/constants/attractions';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export default function ProfileScreen() {
   const { user, logout, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [selectedTab, setSelectedTab] = useState<'favorites' | 'visited'>('favorites');
 
-  const favoritesQuery = trpc.favorites.list.useQuery();
-  const visitedQuery = trpc.visited.list.useQuery();
-  const removeFavoriteMutation = trpc.favorites.remove.useMutation();
+  const favoritesQuery = useQuery({
+    queryKey: ['favorites'],
+    queryFn: () => api.favorites.list(),
+  });
+  
+  const visitedQuery = useQuery({
+    queryKey: ['visited'],
+    queryFn: () => api.visited.list(),
+  });
+  
+  const removeFavoriteMutation = useMutation({
+    mutationFn: (attractionId: string) => api.favorites.remove(attractionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['favorites'] });
+    },
+  });
 
-  const favorites = favoritesQuery.data?.favorites || [];
-  const visited = visitedQuery.data?.visited || [];
+  const favorites = favoritesQuery.data || [];
+  const visited = visitedQuery.data || [];
 
   const handleLogout = async () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -52,8 +67,7 @@ export default function ProfileScreen() {
   };
 
   const removeFavorite = async (attractionId: string) => {
-    await removeFavoriteMutation.mutateAsync({ attractionId });
-    favoritesQuery.refetch();
+    await removeFavoriteMutation.mutateAsync(attractionId);
   };
 
   const getAttractionById = (id: string) => {
@@ -73,8 +87,8 @@ export default function ProfileScreen() {
   }
 
   const displayAttractions = selectedTab === 'favorites' 
-    ? favorites.map(f => ({ ...f, id: f.attraction_id }))
-    : visited.map(v => ({ ...v, id: v.attraction_id }));
+    ? favorites.map(id => ({ attraction_id: id }))
+    : visited.map(id => ({ attraction_id: id }));
 
   return (
     <View style={styles.container}>
@@ -225,12 +239,10 @@ export default function ProfileScreen() {
                         <Text style={styles.removeButtonText}>Remove</Text>
                       </TouchableOpacity>
                     )}
-                    {selectedTab === 'visited' && 'visited_at' in item && (
+                    {selectedTab === 'visited' && (
                       <View style={styles.visitedDate}>
                         <Calendar size={14} color="#666" />
-                        <Text style={styles.visitedDateText}>
-                          {new Date(item.visited_at).toLocaleDateString()}
-                        </Text>
+                        <Text style={styles.visitedDateText}>Visited</Text>
                       </View>
                     )}
                   </View>

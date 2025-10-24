@@ -22,29 +22,66 @@ import {
   Send,
 } from 'lucide-react-native';
 import { NYC_ATTRACTIONS } from '@/constants/attractions';
-import { trpc } from '@/lib/trpc';
-import { useAuth } from '@/lib/auth-context';
+import { api } from '@/lib/api-client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export default function AttractionDetailScreen() {
   const { id } = useLocalSearchParams();
+  const queryClient = useQueryClient();
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
 
-  const reviewsQuery = trpc.reviews.list.useQuery({ attractionId: id as string });
-  const addReviewMutation = trpc.reviews.add.useMutation();
-  const favoritesQuery = trpc.favorites.list.useQuery();
-  const visitedQuery = trpc.visited.list.useQuery();
-  const addFavoriteMutation = trpc.favorites.add.useMutation();
-  const removeFavoriteMutation = trpc.favorites.remove.useMutation();
-  const addVisitedMutation = trpc.visited.add.useMutation();
+  const reviewsQuery = useQuery({
+    queryKey: ['reviews', id],
+    queryFn: () => api.reviews.list(id as string),
+  });
+  
+  const addReviewMutation = useMutation({
+    mutationFn: (data: { attractionId: string; rating: number; comment?: string }) => 
+      api.reviews.add(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reviews', id] });
+    },
+  });
+  
+  const favoritesQuery = useQuery({
+    queryKey: ['favorites'],
+    queryFn: () => api.favorites.list(),
+  });
+  
+  const visitedQuery = useQuery({
+    queryKey: ['visited'],
+    queryFn: () => api.visited.list(),
+  });
+  
+  const addFavoriteMutation = useMutation({
+    mutationFn: (attractionId: string) => api.favorites.add(attractionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['favorites'] });
+    },
+  });
+  
+  const removeFavoriteMutation = useMutation({
+    mutationFn: (attractionId: string) => api.favorites.remove(attractionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['favorites'] });
+    },
+  });
+  
+  const addVisitedMutation = useMutation({
+    mutationFn: (attractionId: string) => api.visited.add(attractionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['visited'] });
+    },
+  });
 
   const attraction = NYC_ATTRACTIONS.find((a) => a.id === id);
-  const reviews = (reviewsQuery.data?.reviews || []) as any[];
-  const favorites = favoritesQuery.data?.favorites || [];
-  const visited = visitedQuery.data?.visited || [];
+  const reviews = reviewsQuery.data || [];
+  const favorites = favoritesQuery.data || [];
+  const visited = visitedQuery.data || [];
 
-  const isFavorite = favorites.some(f => f.attraction_id === id);
-  const isVisited = visited.some(v => v.attraction_id === id);
+  const isFavorite = favorites.includes(id as string);
+  const isVisited = visited.includes(id as string);
 
   const averageRating = reviews.length > 0
     ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
@@ -72,7 +109,6 @@ export default function AttractionDetailScreen() {
       });
       setComment('');
       setRating(5);
-      reviewsQuery.refetch();
       Alert.alert('Success', 'Review submitted successfully!');
     } catch {
       Alert.alert('Error', 'Failed to submit review');
@@ -82,11 +118,10 @@ export default function AttractionDetailScreen() {
   const toggleFavorite = async () => {
     try {
       if (isFavorite) {
-        await removeFavoriteMutation.mutateAsync({ attractionId: id as string });
+        await removeFavoriteMutation.mutateAsync(id as string);
       } else {
-        await addFavoriteMutation.mutateAsync({ attractionId: id as string });
+        await addFavoriteMutation.mutateAsync(id as string);
       }
-      favoritesQuery.refetch();
     } catch {
       Alert.alert('Error', 'Failed to update favorite');
     }
@@ -95,8 +130,7 @@ export default function AttractionDetailScreen() {
   const toggleVisited = async () => {
     if (!isVisited) {
       try {
-        await addVisitedMutation.mutateAsync({ attractionId: id as string });
-        visitedQuery.refetch();
+        await addVisitedMutation.mutateAsync(id as string);
       } catch {
         Alert.alert('Error', 'Failed to check in');
       }
@@ -270,9 +304,8 @@ export default function AttractionDetailScreen() {
                         </View>
                         <View>
                           <Text style={styles.reviewerName}>
-                            {review.firstname} {review.lastname}
+                            {review.user_name}
                           </Text>
-                          <Text style={styles.reviewerUsername}>@{review.username}</Text>
                         </View>
                       </View>
                       <View style={styles.reviewRating}>

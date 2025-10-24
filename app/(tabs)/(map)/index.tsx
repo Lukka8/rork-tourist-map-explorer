@@ -19,7 +19,8 @@ import { StatusBar } from 'expo-status-bar';
 import { MapView, Marker, Polyline, UserLocationMarker, type Region as MapRegion, type MapRef } from '@/components/MapComponents';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'expo-router';
-import { trpc } from '@/lib/trpc';
+import { api } from '@/lib/api-client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const { height } = Dimensions.get('window');
 
@@ -45,20 +46,49 @@ export default function MapScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
 
-  const favoritesQuery = trpc.favorites.list.useQuery(undefined, { enabled: isAuthenticated });
-  const visitedQuery = trpc.visited.list.useQuery(undefined, { enabled: isAuthenticated });
-  const addFavoriteMutation = trpc.favorites.add.useMutation();
-  const removeFavoriteMutation = trpc.favorites.remove.useMutation();
-  const addVisitedMutation = trpc.visited.add.useMutation();
+  const queryClient = useQueryClient();
+  
+  const favoritesQuery = useQuery({
+    queryKey: ['favorites'],
+    queryFn: () => api.favorites.list(),
+    enabled: isAuthenticated,
+  });
+  
+  const visitedQuery = useQuery({
+    queryKey: ['visited'],
+    queryFn: () => api.visited.list(),
+    enabled: isAuthenticated,
+  });
+  
+  const addFavoriteMutation = useMutation({
+    mutationFn: (attractionId: string) => api.favorites.add(attractionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['favorites'] });
+    },
+  });
+  
+  const removeFavoriteMutation = useMutation({
+    mutationFn: (attractionId: string) => api.favorites.remove(attractionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['favorites'] });
+    },
+  });
+  
+  const addVisitedMutation = useMutation({
+    mutationFn: (attractionId: string) => api.visited.add(attractionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['visited'] });
+    },
+  });
 
-  const favorites = favoritesQuery.data?.favorites || [];
-  const visited = visitedQuery.data?.visited || [];
+  const favorites = favoritesQuery.data || [];
+  const visited = visitedQuery.data || [];
 
   const isFavorite = (attractionId: string) => 
-    favorites.some(f => f.attraction_id === attractionId);
+    favorites.includes(attractionId);
   
   const isVisited = (attractionId: string) => 
-    visited.some(v => v.attraction_id === attractionId);
+    visited.includes(attractionId);
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371;
@@ -223,18 +253,15 @@ export default function MapScreen() {
 
   const toggleFavorite = async (attractionId: string) => {
     if (isFavorite(attractionId)) {
-      await removeFavoriteMutation.mutateAsync({ attractionId });
-      favoritesQuery.refetch();
+      await removeFavoriteMutation.mutateAsync(attractionId);
     } else {
-      await addFavoriteMutation.mutateAsync({ attractionId });
-      favoritesQuery.refetch();
+      await addFavoriteMutation.mutateAsync(attractionId);
     }
   };
 
   const toggleVisited = async (attractionId: string) => {
     if (!isVisited(attractionId)) {
-      await addVisitedMutation.mutateAsync({ attractionId });
-      visitedQuery.refetch();
+      await addVisitedMutation.mutateAsync(attractionId);
     }
   };
 
