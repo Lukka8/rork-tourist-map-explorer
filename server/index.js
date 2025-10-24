@@ -53,26 +53,26 @@ app.get('/', (req, res) => {
 
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, username, firstname, lastname, phone } = req.body;
     
-    if (!email || !password || !name) {
+    if (!email || !password || !username || !firstname || !lastname || !phone) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     
     const [existing] = await pool.query(
-      'SELECT id FROM users WHERE email = ?',
-      [email]
+      'SELECT id FROM users WHERE email = ? OR username = ?',
+      [email, username]
     );
     
     if (existing.length > 0) {
-      return res.status(400).json({ error: 'Email already exists' });
+      return res.status(400).json({ error: 'Email or username already exists' });
     }
     
     const hashedPassword = await bcrypt.hash(password, 10);
     
     const [result] = await pool.query(
-      'INSERT INTO users (email, password, name) VALUES (?, ?, ?)',
-      [email, hashedPassword, name]
+      'INSERT INTO users (email, password, username, firstname, lastname, phone) VALUES (?, ?, ?, ?, ?, ?)',
+      [email, hashedPassword, username, firstname, lastname, phone]
     );
     
     const token = jwt.sign(
@@ -86,7 +86,10 @@ app.post('/api/auth/register', async (req, res) => {
       user: {
         id: result.insertId,
         email,
-        name
+        username,
+        firstname,
+        lastname,
+        phone
       }
     });
   } catch (error) {
@@ -130,7 +133,10 @@ app.post('/api/auth/login', async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
-        name: user.name
+        username: user.username,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        phone: user.phone
       }
     });
   } catch (error) {
@@ -142,7 +148,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', authMiddleware, async (req, res) => {
   try {
     const [users] = await pool.query(
-      'SELECT id, email, name, phone, email_verified, phone_verified FROM users WHERE id = ?',
+      'SELECT id, email, username, firstname, lastname, phone, email_verified, phone_verified FROM users WHERE id = ?',
       [req.userId]
     );
     
@@ -288,7 +294,7 @@ app.get('/api/reviews/list/:attractionId', async (req, res) => {
     const { attractionId } = req.params;
     
     const [reviews] = await pool.query(
-      `SELECT r.*, u.name as user_name 
+      `SELECT r.*, u.username as user_name 
        FROM reviews r 
        JOIN users u ON r.user_id = u.id 
        WHERE r.attraction_id = ? 
