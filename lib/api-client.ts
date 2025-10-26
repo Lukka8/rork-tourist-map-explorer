@@ -38,8 +38,17 @@ async function apiFetch<T = unknown>(endpoint: string, options: RequestInit = {}
   console.log('[API] Response status:', response.status);
   
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error || `HTTP ${response.status}`);
+    let errorMessage = `HTTP ${response.status}`;
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.error || errorData.message || errorMessage;
+    } catch (e) {
+      console.log('[API] Failed to parse error response:', e);
+      const text = await response.text().catch(() => '');
+      console.log('[API] Error response text:', text);
+      errorMessage = text || errorMessage;
+    }
+    throw new Error(errorMessage);
   }
   
   return response.json();

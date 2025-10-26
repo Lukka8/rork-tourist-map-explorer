@@ -276,7 +276,9 @@ export default function RegisterScreen() {
       console.error('Registration error:', error);
       let message = 'Registration failed. Please try again.';
       
-      if (error && typeof error === 'object') {
+      if (error instanceof Error) {
+        message = error.message;
+      } else if (error && typeof error === 'object') {
         if ('message' in error && typeof error.message === 'string') {
           message = error.message;
         } else if ('data' in error && error.data && typeof error.data === 'object') {
