@@ -7,6 +7,7 @@ import { Platform, View, Text } from "react-native";
 
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { SocialProvider } from "@/lib/social-context";
+import { trpc, trpcClient } from "@/lib/trpc";
 
 if (Platform.OS === 'web') {
   try {
@@ -101,7 +102,7 @@ export default function RootLayout() {
   }
 
   return (
-    
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <SocialProvider>
@@ -113,5 +114,6 @@ export default function RootLayout() {
           </SocialProvider>
         </AuthProvider>
       </QueryClientProvider>
+    </trpc.Provider>
   );
 }
