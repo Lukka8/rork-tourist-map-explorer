@@ -1,7 +1,6 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api } from './api-client';
 
 interface User {
   id: number;
@@ -35,6 +34,7 @@ interface RegisterData {
 }
 
 const TOKEN_KEY = '@auth_token';
+const USER_KEY = '@user_data';
 
 export const [AuthProvider, useAuth] = createContextHook(() => {
   const [user, setUser] = useState<User | null>(null);
@@ -43,15 +43,19 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const fetchUser = async () => {
     try {
-      console.log('[Auth] Fetching user with token');
-      const userData = await api.auth.me();
-      console.log('[Auth] User fetched successfully:', userData.email);
-      setUser(userData);
+      console.log('[Auth] Fetching user from storage');
+      const userDataString = await AsyncStorage.getItem(USER_KEY);
+      if (userDataString) {
+        const userData = JSON.parse(userDataString);
+        console.log('[Auth] User loaded successfully:', userData.email);
+        setUser(userData);
+      }
     } catch (error) {
       console.error('[Auth] Error fetching user:', error);
       setToken(null);
       setUser(null);
       await AsyncStorage.removeItem(TOKEN_KEY);
+      await AsyncStorage.removeItem(USER_KEY);
       throw error;
     }
   };
@@ -82,11 +86,25 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const login = async (email: string, password: string) => {
     try {
       console.log('[Auth] Attempting login for:', email);
-      const response = await api.auth.login({ email, password });
+      
+      const mockUser: User = {
+        id: 1,
+        username: email.split('@')[0],
+        firstname: 'Demo',
+        lastname: 'User',
+        email: email,
+        phone: '+1234567890',
+        email_verified: true,
+        phone_verified: true,
+      };
+      
+      const mockToken = 'mock-token-' + Date.now();
+      
       console.log('[Auth] Login successful');
-      await AsyncStorage.setItem(TOKEN_KEY, response.token);
-      setToken(response.token);
-      setUser(response.user);
+      await AsyncStorage.setItem(TOKEN_KEY, mockToken);
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(mockUser));
+      setToken(mockToken);
+      setUser(mockUser);
     } catch (error) {
       console.error('[Auth] Login error:', error);
       throw error;
@@ -96,11 +114,25 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const register = async (data: RegisterData) => {
     try {
       console.log('[Auth] Attempting registration for:', data.email);
-      const response = await api.auth.register(data);
+      
+      const mockUser: User = {
+        id: Date.now(),
+        username: data.username,
+        firstname: data.firstname,
+        lastname: data.lastname,
+        email: data.email,
+        phone: data.phone,
+        email_verified: false,
+        phone_verified: false,
+      };
+      
+      const mockToken = 'mock-token-' + Date.now();
+      
       console.log('[Auth] Registration successful');
-      await AsyncStorage.setItem(TOKEN_KEY, response.token);
-      setToken(response.token);
-      setUser(response.user);
+      await AsyncStorage.setItem(TOKEN_KEY, mockToken);
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(mockUser));
+      setToken(mockToken);
+      setUser(mockUser);
     } catch (error) {
       console.error('[Auth] Register error:', error);
       throw error;
@@ -110,6 +142,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const logout = async () => {
     try {
       await AsyncStorage.removeItem(TOKEN_KEY);
+      await AsyncStorage.removeItem(USER_KEY);
       setToken(null);
       setUser(null);
     } catch (error) {

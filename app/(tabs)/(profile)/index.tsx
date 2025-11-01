@@ -22,35 +22,14 @@ import {
 } from 'lucide-react-native';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'expo-router';
-import { api } from '@/lib/api-client';
 import { NYC_ATTRACTIONS } from '@/constants/attractions';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAttractions } from '@/lib/attractions-context';
 
 export default function ProfileScreen() {
   const { user, logout, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
-  const queryClient = useQueryClient();
   const [selectedTab, setSelectedTab] = useState<'favorites' | 'visited'>('favorites');
-
-  const favoritesQuery = useQuery({
-    queryKey: ['favorites'],
-    queryFn: () => api.favorites.list(),
-  });
-  
-  const visitedQuery = useQuery({
-    queryKey: ['visited'],
-    queryFn: () => api.visited.list(),
-  });
-  
-  const removeFavoriteMutation = useMutation({
-    mutationFn: (attractionId: string) => api.favorites.remove(attractionId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['favorites'] });
-    },
-  });
-
-  const favorites = favoritesQuery.data || [];
-  const visited = visitedQuery.data || [];
+  const { favorites, visited, removeFavorite } = useAttractions();
 
   const handleLogout = async () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -66,8 +45,8 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const removeFavorite = async (attractionId: string) => {
-    await removeFavoriteMutation.mutateAsync(attractionId);
+  const handleRemoveFavorite = async (attractionId: string) => {
+    await removeFavorite(attractionId);
   };
 
   const getAttractionById = (id: string) => {
@@ -245,7 +224,7 @@ export default function ProfileScreen() {
                         style={styles.removeButton}
                         onPress={(e) => {
                           e.stopPropagation();
-                          removeFavorite(item.attraction_id);
+                          handleRemoveFavorite(item.attraction_id);
                         }}
                       >
                         <Text style={styles.removeButtonText}>Remove</Text>

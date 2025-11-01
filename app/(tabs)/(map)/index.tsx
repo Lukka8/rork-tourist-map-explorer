@@ -19,8 +19,7 @@ import { StatusBar } from 'expo-status-bar';
 import { MapView, Marker, Polyline, UserLocationMarker, type Region as MapRegion, type MapRef } from '@/components/MapComponents';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'expo-router';
-import { api } from '@/lib/api-client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAttractions } from '@/lib/attractions-context';
 
 const { height } = Dimensions.get('window');
 
@@ -46,49 +45,8 @@ export default function MapScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
 
-  const queryClient = useQueryClient();
-  
-  const favoritesQuery = useQuery({
-    queryKey: ['favorites'],
-    queryFn: () => api.favorites.list(),
-    enabled: isAuthenticated,
-  });
-  
-  const visitedQuery = useQuery({
-    queryKey: ['visited'],
-    queryFn: () => api.visited.list(),
-    enabled: isAuthenticated,
-  });
-  
-  const addFavoriteMutation = useMutation({
-    mutationFn: (attractionId: string) => api.favorites.add(attractionId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['favorites'] });
-    },
-  });
-  
-  const removeFavoriteMutation = useMutation({
-    mutationFn: (attractionId: string) => api.favorites.remove(attractionId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['favorites'] });
-    },
-  });
-  
-  const addVisitedMutation = useMutation({
-    mutationFn: (attractionId: string) => api.visited.add(attractionId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['visited'] });
-    },
-  });
-
-  const favorites = favoritesQuery.data || [];
-  const visited = visitedQuery.data || [];
-
-  const isFavorite = (attractionId: string) => 
-    favorites.includes(attractionId);
-  
-  const isVisited = (attractionId: string) => 
-    visited.includes(attractionId);
+  const attractions = useAttractions();
+  const { favorites, visited, isFavorite, isVisited, addFavorite: addFav, removeFavorite: removeFav, addVisited: addVis } = attractions;
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371;
@@ -253,15 +211,15 @@ export default function MapScreen() {
 
   const toggleFavorite = async (attractionId: string) => {
     if (isFavorite(attractionId)) {
-      await removeFavoriteMutation.mutateAsync(attractionId);
+      await removeFav(attractionId);
     } else {
-      await addFavoriteMutation.mutateAsync(attractionId);
+      await addFav(attractionId);
     }
   };
 
   const toggleVisited = async (attractionId: string) => {
     if (!isVisited(attractionId)) {
-      await addVisitedMutation.mutateAsync(attractionId);
+      await addVis(attractionId);
     }
   };
 
