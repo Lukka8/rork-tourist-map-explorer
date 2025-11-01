@@ -1,4 +1,4 @@
-import React, { forwardRef, useImperativeHandle, useRef } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useState, useCallback } from 'react';
 import { ViewStyle } from 'react-native';
 import { Map as MapGL, Source, Layer, Marker } from 'react-map-gl/maplibre';
 
@@ -28,11 +28,18 @@ interface MapViewProps {
 export const MapView = forwardRef<MapRef, MapViewProps>(
   ({ children, style, initialRegion, onLoad }, ref) => {
     const mapRef = useRef<any>(null);
+    const [hasError, setHasError] = useState<boolean>(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+    const handleError = useCallback((e: unknown) => {
+      console.log('[MapView.web] onError', e);
+      setHasError(true);
+      setErrorMessage(e instanceof Error ? e.message : 'Unknown map error');
+    }, []);
 
     useImperativeHandle(ref, () => ({
       animateToRegion: (region: Region, duration = 500) => {
         try {
-          
           mapRef.current?.flyTo({
             center: [region.longitude, region.latitude],
             zoom: calculateWebZoom(region.latitudeDelta),
@@ -40,6 +47,7 @@ export const MapView = forwardRef<MapRef, MapViewProps>(
           });
         } catch (e) {
           console.log('[MapView.web] flyTo failed', e);
+          handleError(e);
         }
       },
     }));
@@ -52,14 +60,34 @@ export const MapView = forwardRef<MapRef, MapViewProps>(
         }
       : { longitude: -73.9851, latitude: 40.7589, zoom: 12 };
 
+    if (hasError) {
+      return (
+        <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ maxWidth: 480, textAlign: 'center' }}>
+            <div style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#E8F1FF', margin: '0 auto 12px auto' }} />
+            <div style={{ color: '#666', marginBottom: 12 }}>{errorMessage ?? ''}</div>
+            <button
+              aria-label="Retry map load"
+              onClick={() => {
+                setHasError(false);
+                setErrorMessage(null);
+                setTimeout(() => onLoad?.(), 0);
+              }}
+              style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: '#007AFF', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700 }}
+            />
+          </div>
+        </div>
+      );
+    }
+
     return (
       <MapGL
-        
         style={style as any}
         ref={mapRef as any}
         initialViewState={initialViewState}
         mapStyle="https://demotiles.maplibre.org/style.json"
         onLoad={onLoad}
+        onError={handleError as any}
       >
         {children}
       </MapGL>
