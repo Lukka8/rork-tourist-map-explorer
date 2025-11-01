@@ -4,8 +4,6 @@ let MapView: any;
 let Marker: any;
 let Polyline: any;
 let UserLocationMarker: any;
-let MapRef: any;
-let Region: any;
 
 if (Platform.OS === 'web') {
   const webComponents = require('./MapComponents.web');
@@ -22,4 +20,4 @@ if (Platform.OS === 'web') {
 }
 
 export { MapView, Marker, Polyline, UserLocationMarker };
-export type { MapRef, Region } from './MapComponents.native';
+export type { MapRef, Region } from './MapComponents.types';
