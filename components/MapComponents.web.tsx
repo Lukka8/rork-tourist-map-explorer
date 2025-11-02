@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle, useRef, useState, useCallback } from 'react';
-import { ViewStyle } from 'react-native';
+import { View, ViewStyle, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Map as MapGL, Source, Layer, Marker } from 'react-map-gl/maplibre';
 
 export type Region = {
@@ -62,21 +62,24 @@ export const MapView = forwardRef<MapRef, MapViewProps>(
 
     if (hasError) {
       return (
-        <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ maxWidth: 480, textAlign: 'center' }}>
-            <div style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#E8F1FF', margin: '0 auto 12px auto' }} />
-            <div style={{ color: '#666', marginBottom: 12 }}>{errorMessage ?? ''}</div>
-            <button
-              aria-label="Retry map load"
-              onClick={() => {
+        <View style={styles.errorWrap}>
+          <View style={styles.errorInner}>
+            <View style={styles.errorIcon} />
+            <Text style={styles.errorText}>{errorMessage ?? ''}</Text>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Retry map load"
+              onPress={() => {
                 setHasError(false);
                 setErrorMessage(null);
                 setTimeout(() => onLoad?.(), 0);
               }}
-              style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: '#007AFF', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700 }}
-            />
-          </div>
-        </div>
+              style={styles.retryBtn}
+            >
+              <Text style={styles.retryBtnText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       );
     }
 
@@ -157,14 +160,14 @@ interface UserLocationMarkerProps {
 
 export const UserLocationMarker = ({ coordinate }: UserLocationMarkerProps) => (
   <Marker longitude={coordinate.longitude} latitude={coordinate.latitude} anchor="center">
-    <div
+    <View
       style={{
         width: 20,
         height: 20,
         borderRadius: 10,
         backgroundColor: '#007AFF',
-        border: '3px solid #fff',
-        boxShadow: '0 0 10px rgba(0,122,255,0.5)',
+        borderWidth: 3,
+        borderColor: '#fff',
       }}
     />
   </Marker>
@@ -173,3 +176,41 @@ export const UserLocationMarker = ({ coordinate }: UserLocationMarkerProps) => (
 function calculateWebZoom(latitudeDelta: number) {
   return Math.log2(360 / latitudeDelta) - 1;
 }
+
+const styles = StyleSheet.create({
+  errorWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  errorInner: {
+    maxWidth: 480,
+    width: '100%',
+    alignItems: 'center',
+  },
+  errorIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#E8F1FF',
+    marginBottom: 12,
+  },
+  errorText: {
+    color: '#666',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  retryBtn: {
+    width: 120,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryBtnText: {
+    color: '#fff',
+    fontWeight: '700' as const,
+  },
+});
