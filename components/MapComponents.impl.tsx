@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle, useRef, useState, useEffect } from 'react';
-import { View, ViewStyle, StyleSheet } from 'react-native';
+import { View, ViewStyle, StyleSheet, Text } from 'react-native';
 import Map, { Marker as MapGLMarker, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { Region, MapRef } from './MapComponents.types';
@@ -22,6 +22,7 @@ export const MapView = forwardRef<MapRef, MapViewProps>(
   ({ children, style, initialRegion, mapType = 'standard', onLoad }, ref) => {
     const mapRef = useRef<any>(null);
     const [mapLoaded, setMapLoaded] = useState(false);
+    const [mapError, setMapError] = useState<string | null>(null);
 
     const region = initialRegion ?? {
       latitude: 40.7589,
@@ -34,7 +35,7 @@ export const MapView = forwardRef<MapRef, MapViewProps>(
 
     useImperativeHandle(ref, () => ({
       animateToRegion: (next: Region, duration = 500) => {
-        if (mapRef.current) {
+        if (mapRef.current && !mapError) {
           const nextZoom = calculateWebZoom(next.latitudeDelta);
           mapRef.current.flyTo({
             center: [next.longitude, next.latitude],
@@ -55,6 +56,28 @@ export const MapView = forwardRef<MapRef, MapViewProps>(
       ? 'https://demotiles.maplibre.org/style.json'
       : 'https://demotiles.maplibre.org/style.json';
 
+    const handleMapError = (event: any) => {
+      console.error('[MapView Web] Map error:', event);
+      setMapError('Interactive map is not available. Please use a device or enable WebGL in your browser.');
+    };
+
+    if (mapError) {
+      return (
+        <View style={[styles.container, style]}>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorTitle}>Map Unavailable</Text>
+            <Text style={styles.errorText}>{mapError}</Text>
+            <Text style={styles.errorHint}>For interactive map experience, please:</Text>
+            <Text style={styles.errorHintItem}>• Scan the QR code to open on your device</Text>
+            <Text style={styles.errorHintItem}>• Enable WebGL in your browser settings</Text>
+            <View style={styles.staticMapContainer}>
+              <Text style={styles.staticMapText}>📍 {region.latitude.toFixed(4)}, {region.longitude.toFixed(4)}</Text>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
     return (
       <View style={[styles.container, style]}>
         <Map
@@ -67,6 +90,7 @@ export const MapView = forwardRef<MapRef, MapViewProps>(
           style={{ width: '100%', height: '100%' }}
           mapStyle={mapStyle}
           onLoad={() => setMapLoaded(true)}
+          onError={handleMapError}
         >
           <NavigationControl position="top-right" />
           {children}
@@ -164,4 +188,51 @@ function calculateWebZoom(latitudeDelta: number) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    padding: 24,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  errorHint: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  errorHintItem: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  staticMapContainer: {
+    marginTop: 24,
+    padding: 20,
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  staticMapText: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600' as const,
+  },
 });
