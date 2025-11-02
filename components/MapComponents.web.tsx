@@ -1,6 +1,6 @@
-import React, { forwardRef, useImperativeHandle, useRef, useState, useCallback } from 'react';
-import { View, ViewStyle, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { Map as MapGL, Source, Layer, Marker } from 'react-map-gl/maplibre';
+import React, { forwardRef, useImperativeHandle, useMemo, useState } from 'react';
+import { View, ViewStyle, TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 
 export type Region = {
   latitude: number;
@@ -25,75 +25,62 @@ interface MapViewProps {
   onLoad?: () => void;
 }
 
+function buildStaticMapUrl(center: { latitude: number; longitude: number }, zoom: number, width: number, height: number) {
+  const lat = center.latitude.toFixed(6);
+  const lng = center.longitude.toFixed(6);
+  const size = `${Math.min(Math.max(Math.floor(width), 200), 1280)}x${Math.min(Math.max(Math.floor(height), 200), 1280)}`;
+  return `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=${zoom}&size=${size}&maptype=mapnik&markers=${lat},${lng},lightblue1`;
+}
+
 export const MapView = forwardRef<MapRef, MapViewProps>(
   ({ children, style, initialRegion, onLoad }, ref) => {
-    const mapRef = useRef<any>(null);
-    const [hasError, setHasError] = useState<boolean>(false);
-    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [region, setRegion] = useState<Region>(
+      initialRegion ?? {
+        latitude: 40.7589,
+        longitude: -73.9851,
+        latitudeDelta: 0.15,
+        longitudeDelta: 0.15,
+      },
+    );
 
-    const handleError = useCallback((e: unknown) => {
-      console.log('[MapView.web] onError', e);
-      setHasError(true);
-      setErrorMessage(e instanceof Error ? e.message : 'Unknown map error');
-    }, []);
+    const [loading, setLoading] = useState<boolean>(true);
+    const zoom = useMemo(() => calculateWebZoom(region.latitudeDelta), [region.latitudeDelta]);
 
     useImperativeHandle(ref, () => ({
-      animateToRegion: (region: Region, duration = 500) => {
-        try {
-          mapRef.current?.flyTo({
-            center: [region.longitude, region.latitude],
-            zoom: calculateWebZoom(region.latitudeDelta),
-            duration,
-          });
-        } catch (e) {
-          console.log('[MapView.web] flyTo failed', e);
-          handleError(e);
-        }
+      animateToRegion: (next: Region) => {
+        setRegion(next);
       },
     }));
 
-    const initialViewState = initialRegion
-      ? {
-          longitude: initialRegion.longitude,
-          latitude: initialRegion.latitude,
-          zoom: calculateWebZoom(initialRegion.latitudeDelta),
-        }
-      : { longitude: -73.9851, latitude: 40.7589, zoom: 12 };
-
-    if (hasError) {
-      return (
-        <View style={styles.errorWrap}>
-          <View style={styles.errorInner}>
-            <View style={styles.errorIcon} />
-            <Text style={styles.errorText}>{errorMessage ?? ''}</Text>
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel="Retry map load"
-              onPress={() => {
-                setHasError(false);
-                setErrorMessage(null);
-                setTimeout(() => onLoad?.(), 0);
-              }}
-              style={styles.retryBtn}
-            >
-              <Text style={styles.retryBtnText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      );
-    }
+    const uri = useMemo(() => buildStaticMapUrl(region, zoom, 800, 600), [region, zoom]);
 
     return (
-      <MapGL
-        style={style as any}
-        ref={mapRef as any}
-        initialViewState={initialViewState}
-        mapStyle="https://demotiles.maplibre.org/style.json"
-        onLoad={onLoad}
-        onError={handleError as any}
-      >
+      <View style={[styles.container, style]}>
+        <Image
+          source={{ uri }}
+          style={StyleSheet.absoluteFill}
+          onLoadEnd={() => {
+            if (loading) setLoading(false);
+            onLoad?.();
+          }}
+        />
+        {loading && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.loadingText}>Loading map…</Text>
+          </View>
+        )}
+        {!loading && (
+          <View style={styles.banner}>
+            <Text style={styles.bannerText}>Web preview: static map (open on device for interactive map)</Text>
+            <TouchableOpacity accessibilityRole="button" onPress={() => setRegion({ ...region })} style={styles.retryBtn}>
+              <Text style={styles.retryBtnText}>Refresh</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {/* Children (Marker/Polyline) are no-ops on web to avoid DOM reliance */}
         {children}
-      </MapGL>
+      </View>
     );
   },
 );
@@ -106,21 +93,7 @@ interface MarkerProps {
   children?: React.ReactNode;
 }
 
-export const MarkerView = ({ coordinate, onPress, children }: MarkerProps) => (
-  <Marker
-    longitude={coordinate.longitude}
-    latitude={coordinate.latitude}
-    anchor="bottom"
-    onClick={(e: any) => {
-      e.originalEvent?.stopPropagation?.();
-      onPress?.();
-    }}
-  >
-    {children}
-  </Marker>
-);
-
-export { MarkerView as Marker };
+export const Marker = (_props: MarkerProps) => null;
 
 interface PolylineProps {
   coordinates: { latitude: number; longitude: number }[];
@@ -129,82 +102,52 @@ interface PolylineProps {
   lineDashPattern?: number[];
 }
 
-export const Polyline = ({ coordinates, strokeColor = '#007AFF', strokeWidth = 4, lineDashPattern }: PolylineProps) => {
-  const geojson = {
-    type: 'Feature' as const,
-    properties: {},
-    geometry: {
-      type: 'LineString' as const,
-      coordinates: coordinates.map((c) => [c.longitude, c.latitude]),
-    },
-  };
-
-  return (
-    <Source id="route" type="geojson" data={geojson as any}>
-      <Layer
-        id="route-layer"
-        type="line"
-        paint={{
-          'line-color': strokeColor,
-          'line-width': strokeWidth,
-          ...(lineDashPattern ? { 'line-dasharray': lineDashPattern } : {}),
-        }}
-      />
-    </Source>
-  );
-};
+export const Polyline = (_props: PolylineProps) => null;
 
 interface UserLocationMarkerProps {
   coordinate: { latitude: number; longitude: number };
 }
 
-export const UserLocationMarker = ({ coordinate }: UserLocationMarkerProps) => (
-  <Marker longitude={coordinate.longitude} latitude={coordinate.latitude} anchor="center">
-    <View
-      style={{
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        backgroundColor: '#007AFF',
-        borderWidth: 3,
-        borderColor: '#fff',
-      }}
-    />
-  </Marker>
-);
+export const UserLocationMarker = (_props: UserLocationMarkerProps) => null;
 
 function calculateWebZoom(latitudeDelta: number) {
-  return Math.log2(360 / latitudeDelta) - 1;
+  const value = Math.log2(360 / Math.max(latitudeDelta, 0.00001));
+  return Math.max(1, Math.min(18, Math.round(value)));
 }
 
 const styles = StyleSheet.create({
-  errorWrap: {
-    flex: 1,
+  container: { flex: 1 },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
+    backgroundColor: 'rgba(255,255,255,0.6)',
   },
-  errorInner: {
-    maxWidth: 480,
-    width: '100%',
+  loadingText: {
+    marginTop: 8,
+    color: '#333',
+  },
+  banner: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    right: 12,
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
-  errorIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#E8F1FF',
-    marginBottom: 12,
-  },
-  errorText: {
-    color: '#666',
-    marginBottom: 12,
-    textAlign: 'center',
+  bannerText: {
+    flex: 1,
+    color: '#333',
   },
   retryBtn: {
-    width: 120,
-    height: 44,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 36,
+    borderRadius: 8,
     backgroundColor: '#007AFF',
     alignItems: 'center',
     justifyContent: 'center',
