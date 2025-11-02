@@ -19,17 +19,25 @@ import {
   Phone,
   Calendar,
   Star,
+  Moon,
+  Sun,
+  Monitor,
 } from 'lucide-react-native';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'expo-router';
 import { NYC_ATTRACTIONS } from '@/constants/attractions';
 import { useAttractions } from '@/lib/attractions-context';
+import { useTheme, type ThemeMode } from '@/lib/theme-context';
+import { useThemeColors } from '@/lib/use-theme-colors';
 
 export default function ProfileScreen() {
   const { user, logout, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const [selectedTab, setSelectedTab] = useState<'favorites' | 'visited'>('favorites');
   const { favorites, visited, removeFavorite } = useAttractions();
+  const { themeMode, setTheme } = useTheme();
+  const colors = useThemeColors();
+  const [showThemeMenu, setShowThemeMenu] = useState(false);
 
   const handleLogout = async () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -69,97 +77,143 @@ export default function ProfileScreen() {
     ? favorites.map(id => ({ attraction_id: id }))
     : visited.map(id => ({ attraction_id: id }));
 
+  const handleThemeChange = (mode: ThemeMode) => {
+    setTheme(mode);
+    setShowThemeMenu(false);
+  };
+
+  const themeIcon = themeMode === 'dark' ? Moon : themeMode === 'light' ? Sun : Monitor;
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: colors.secondaryBackground }]}>
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <View style={styles.headerContent}>
-          <View style={styles.avatarContainer}>
-            <User size={48} color="#007AFF" />
+          <View style={[styles.avatarContainer, { backgroundColor: colors.primary + '20' }]}>
+            <User size={48} color={colors.primary} />
           </View>
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>
+            <Text style={[styles.userName, { color: colors.text }]}>
               {user.firstname} {user.lastname}
             </Text>
-            <Text style={styles.username}>@{user.username}</Text>
+            <Text style={[styles.username, { color: colors.secondaryText }]}>@{user.username}</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <LogOut size={24} color="#FF3B30" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity 
+            style={[styles.themeButton, { borderColor: colors.primary }]} 
+            onPress={() => setShowThemeMenu(!showThemeMenu)}
+          >
+            {themeIcon === Moon && <Moon size={20} color={colors.primary} />}
+            {themeIcon === Sun && <Sun size={20} color={colors.primary} />}
+            {themeIcon === Monitor && <Monitor size={20} color={colors.primary} />}
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.logoutButton, { borderColor: colors.error }]} onPress={handleLogout}>
+            <LogOut size={20} color={colors.error} />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <View style={styles.contactInfo}>
+      {showThemeMenu && (
+        <View style={[styles.themeMenu, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <TouchableOpacity 
+            style={[styles.themeOption, themeMode === 'light' && { backgroundColor: colors.primary + '20' }]}
+            onPress={() => handleThemeChange('light')}
+          >
+            <Sun size={20} color={colors.text} />
+            <Text style={[styles.themeOptionText, { color: colors.text }]}>Light</Text>
+            {themeMode === 'light' && <CheckCircle2 size={20} color={colors.primary} />}
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.themeOption, themeMode === 'dark' && { backgroundColor: colors.primary + '20' }]}
+            onPress={() => handleThemeChange('dark')}
+          >
+            <Moon size={20} color={colors.text} />
+            <Text style={[styles.themeOptionText, { color: colors.text }]}>Dark</Text>
+            {themeMode === 'dark' && <CheckCircle2 size={20} color={colors.primary} />}
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.themeOption, themeMode === 'system' && { backgroundColor: colors.primary + '20' }]}
+            onPress={() => handleThemeChange('system')}
+          >
+            <Monitor size={20} color={colors.text} />
+            <Text style={[styles.themeOptionText, { color: colors.text }]}>System</Text>
+            {themeMode === 'system' && <CheckCircle2 size={20} color={colors.primary} />}
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <View style={[styles.contactInfo, { backgroundColor: colors.card }]}>
         <View style={styles.contactItem}>
-          <Mail size={16} color="#666" />
-          <Text style={styles.contactText}>{user.email}</Text>
+          <Mail size={16} color={colors.secondaryText} />
+          <Text style={[styles.contactText, { color: colors.text }]}>{user.email}</Text>
           {user.email_verified && (
-            <CheckCircle2 size={16} color="#34C759" />
+            <CheckCircle2 size={16} color={colors.success} />
           )}
         </View>
         {user.phone && (
           <View style={styles.contactItem}>
-            <Phone size={16} color="#666" />
-            <Text style={styles.contactText}>{user.phone}</Text>
+            <Phone size={16} color={colors.secondaryText} />
+            <Text style={[styles.contactText, { color: colors.text }]}>{user.phone}</Text>
             {user.phone_verified && (
-              <CheckCircle2 size={16} color="#34C759" />
+              <CheckCircle2 size={16} color={colors.success} />
             )}
           </View>
         )}
       </View>
 
       <View style={styles.statsContainer}>
-        <View style={styles.statBox}>
-          <Heart size={24} color="#FF3B30" fill="#FF3B30" />
-          <Text style={styles.statNumber}>{favorites.length}</Text>
-          <Text style={styles.statLabel}>Favorites</Text>
+        <View style={[styles.statBox, { backgroundColor: colors.card }]}>
+          <Heart size={24} color={colors.heartRed} fill={colors.heartRed} />
+          <Text style={[styles.statNumber, { color: colors.text }]}>{favorites.length}</Text>
+          <Text style={[styles.statLabel, { color: colors.secondaryText }]}>Favorites</Text>
         </View>
-        <View style={styles.statBox}>
-          <CheckCircle2 size={24} color="#34C759" />
-          <Text style={styles.statNumber}>{visited.length}</Text>
-          <Text style={styles.statLabel}>Visited</Text>
+        <View style={[styles.statBox, { backgroundColor: colors.card }]}>
+          <CheckCircle2 size={24} color={colors.success} />
+          <Text style={[styles.statNumber, { color: colors.text }]}>{visited.length}</Text>
+          <Text style={[styles.statLabel, { color: colors.secondaryText }]}>Visited</Text>
         </View>
-        <View style={styles.statBox}>
-          <MapPin size={24} color="#007AFF" />
-          <Text style={styles.statNumber}>{NYC_ATTRACTIONS.length}</Text>
-          <Text style={styles.statLabel}>Total</Text>
+        <View style={[styles.statBox, { backgroundColor: colors.card }]}>
+          <MapPin size={24} color={colors.primary} />
+          <Text style={[styles.statNumber, { color: colors.text }]}>{NYC_ATTRACTIONS.length}</Text>
+          <Text style={[styles.statLabel, { color: colors.secondaryText }]}>Total</Text>
         </View>
       </View>
 
       <View style={styles.socialRow}>
-        <TouchableOpacity style={styles.socialButton} onPress={() => router.push('/(tabs)/(profile)/friends')}>
-          <Text style={styles.socialButtonText}>Friends</Text>
+        <TouchableOpacity style={[styles.socialButton, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => router.push('/(tabs)/(profile)/friends')}>
+          <Text style={[styles.socialButtonText, { color: colors.text }]}>Friends</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.socialButton} onPress={() => router.push('/(tabs)/(profile)/requests')}>
-          <Text style={styles.socialButtonText}>Requests</Text>
+        <TouchableOpacity style={[styles.socialButton, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => router.push('/(tabs)/(profile)/requests')}>
+          <Text style={[styles.socialButtonText, { color: colors.text }]}>Requests</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.socialButton} onPress={() => router.push('/(tabs)/(profile)/circles')}>
-          <Text style={styles.socialButtonText}>Circles</Text>
+        <TouchableOpacity style={[styles.socialButton, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => router.push('/(tabs)/(profile)/circles')}>
+          <Text style={[styles.socialButtonText, { color: colors.text }]}>Circles</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.tabsContainer}>
+      <View style={[styles.tabsContainer, { backgroundColor: colors.card }]}>
         <TouchableOpacity
-          style={[styles.tab, selectedTab === 'favorites' && styles.tabActive]}
+          style={[styles.tab, selectedTab === 'favorites' && { backgroundColor: colors.secondaryBackground }]}
           onPress={() => setSelectedTab('favorites')}
         >
           <Heart
             size={20}
-            color={selectedTab === 'favorites' ? '#FF3B30' : '#999'}
-            fill={selectedTab === 'favorites' ? '#FF3B30' : 'none'}
+            color={selectedTab === 'favorites' ? colors.heartRed : colors.secondaryText}
+            fill={selectedTab === 'favorites' ? colors.heartRed : 'none'}
           />
-          <Text style={[styles.tabText, selectedTab === 'favorites' && styles.tabTextActive]}>
+          <Text style={[styles.tabText, { color: colors.secondaryText }, selectedTab === 'favorites' && { color: colors.text }]}>
             Favorites
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, selectedTab === 'visited' && styles.tabActive]}
+          style={[styles.tab, selectedTab === 'visited' && { backgroundColor: colors.secondaryBackground }]}
           onPress={() => setSelectedTab('visited')}
         >
           <CheckCircle2
             size={20}
-            color={selectedTab === 'visited' ? '#34C759' : '#999'}
+            color={selectedTab === 'visited' ? colors.success : colors.secondaryText}
           />
-          <Text style={[styles.tabText, selectedTab === 'visited' && styles.tabTextActive]}>
+          <Text style={[styles.tabText, { color: colors.secondaryText }, selectedTab === 'visited' && { color: colors.text }]}>
             Visited
           </Text>
         </TouchableOpacity>
@@ -170,17 +224,17 @@ export default function ProfileScreen() {
           <View style={styles.emptyState}>
             {selectedTab === 'favorites' ? (
               <>
-                <Heart size={64} color="#E5E5E5" />
-                <Text style={styles.emptyTitle}>No Favorites Yet</Text>
-                <Text style={styles.emptyText}>
+                <Heart size={64} color={colors.border} />
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>No Favorites Yet</Text>
+                <Text style={[styles.emptyText, { color: colors.secondaryText }]}>
                   Start exploring and save your favorite attractions
                 </Text>
               </>
             ) : (
               <>
-                <MapPin size={64} color="#E5E5E5" />
-                <Text style={styles.emptyTitle}>No Visits Yet</Text>
-                <Text style={styles.emptyText}>
+                <MapPin size={64} color={colors.border} />
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>No Visits Yet</Text>
+                <Text style={[styles.emptyText, { color: colors.secondaryText }]}>
                   Check in at attractions as you explore NYC
                 </Text>
               </>
@@ -194,7 +248,7 @@ export default function ProfileScreen() {
             return (
               <TouchableOpacity
                 key={item.attraction_id}
-                style={styles.attractionCard}
+                style={[styles.attractionCard, { backgroundColor: colors.card }]}
                 onPress={() => viewAttractionDetails(item.attraction_id)}
               >
                 <Image
@@ -204,24 +258,24 @@ export default function ProfileScreen() {
                 />
                 <View style={styles.attractionInfo}>
                   <View style={styles.attractionHeader}>
-                    <Text style={styles.attractionName}>{attraction.name}</Text>
-                    <View style={styles.categoryBadge}>
-                      <Text style={styles.categoryText}>
+                    <Text style={[styles.attractionName, { color: colors.text }]}>{attraction.name}</Text>
+                    <View style={[styles.categoryBadge, { backgroundColor: colors.primary + '20' }]}>
+                      <Text style={[styles.categoryText, { color: colors.primary }]}>
                         {attraction.category.toUpperCase()}
                       </Text>
                     </View>
                   </View>
-                  <Text style={styles.attractionDescription} numberOfLines={2}>
+                  <Text style={[styles.attractionDescription, { color: colors.secondaryText }]} numberOfLines={2}>
                     {attraction.description}
                   </Text>
                   <View style={styles.attractionFooter}>
                     <View style={styles.ratingContainer}>
-                      <Star size={14} color="#FFD700" fill="#FFD700" />
-                      <Text style={styles.ratingText}>4.5</Text>
+                      <Star size={14} color={colors.warning} fill={colors.warning} />
+                      <Text style={[styles.ratingText, { color: colors.text }]}>4.5</Text>
                     </View>
                     {selectedTab === 'favorites' && (
                       <TouchableOpacity
-                        style={styles.removeButton}
+                        style={[styles.removeButton, { backgroundColor: colors.error }]}
                         onPress={(e) => {
                           e.stopPropagation();
                           handleRemoveFavorite(item.attraction_id);
@@ -232,8 +286,8 @@ export default function ProfileScreen() {
                     )}
                     {selectedTab === 'visited' && (
                       <View style={styles.visitedDate}>
-                        <Calendar size={14} color="#666" />
-                        <Text style={styles.visitedDateText}>Visited</Text>
+                        <Calendar size={14} color={colors.secondaryText} />
+                        <Text style={[styles.visitedDateText, { color: colors.secondaryText }]}>Visited</Text>
                       </View>
                     )}
                   </View>
@@ -250,22 +304,30 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F7FA',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 20,
-    backgroundColor: '#FFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  themeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
   },
   headerContent: {
     flexDirection: 'row',
@@ -276,10 +338,27 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#E8F4FF',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
+  },
+  themeMenu: {
+    marginHorizontal: 20,
+    marginTop: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  themeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 12,
+  },
+  themeOptionText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600' as const,
   },
   userInfo: {
     flex: 1,
@@ -287,25 +366,20 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 24,
     fontWeight: '700' as const,
-    color: '#1a1a1a',
     marginBottom: 4,
   },
   username: {
     fontSize: 16,
-    color: '#666',
   },
   logoutButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FFF',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#FF3B30',
   },
   contactInfo: {
-    backgroundColor: '#FFF',
     padding: 20,
     gap: 12,
   },
@@ -317,7 +391,6 @@ const styles = StyleSheet.create({
   contactText: {
     flex: 1,
     fontSize: 15,
-    color: '#333',
   },
   statsContainer: {
     flexDirection: 'row',
@@ -332,20 +405,16 @@ const styles = StyleSheet.create({
   },
   socialButton: {
     flex: 1,
-    backgroundColor: '#FFF',
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E5E5E5',
   },
   socialButtonText: {
-    color: '#1a1a1a',
     fontWeight: '700' as const,
   },
   statBox: {
     flex: 1,
-    backgroundColor: '#FFF',
     padding: 20,
     borderRadius: 16,
     alignItems: 'center',
@@ -359,16 +428,13 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 28,
     fontWeight: '800' as const,
-    color: '#1a1a1a',
   },
   statLabel: {
     fontSize: 13,
-    color: '#666',
     fontWeight: '600' as const,
   },
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: '#FFF',
     marginHorizontal: 20,
     marginBottom: 20,
     borderRadius: 16,
@@ -388,16 +454,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 8,
   },
-  tabActive: {
-    backgroundColor: '#F5F7FA',
-  },
   tabText: {
     fontSize: 15,
     fontWeight: '600' as const,
-    color: '#999',
-  },
-  tabTextActive: {
-    color: '#1a1a1a',
   },
   listContainer: {
     flex: 1,
@@ -411,18 +470,15 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 24,
     fontWeight: '700' as const,
-    color: '#1a1a1a',
     marginTop: 20,
     marginBottom: 8,
   },
   emptyText: {
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
     paddingHorizontal: 40,
   },
   attractionCard: {
-    backgroundColor: '#FFF',
     borderRadius: 16,
     marginBottom: 16,
     overflow: 'hidden',
@@ -449,11 +505,9 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: '700' as const,
-    color: '#1a1a1a',
     marginRight: 12,
   },
   categoryBadge: {
-    backgroundColor: '#E8F4FF',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -461,12 +515,10 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 10,
     fontWeight: '700' as const,
-    color: '#007AFF',
     letterSpacing: 0.5,
   },
   attractionDescription: {
     fontSize: 14,
-    color: '#666',
     lineHeight: 20,
     marginBottom: 12,
   },
@@ -483,13 +535,11 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: '#333',
   },
   removeButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#FF3B30',
   },
   removeButtonText: {
     fontSize: 13,
@@ -503,6 +553,5 @@ const styles = StyleSheet.create({
   },
   visitedDateText: {
     fontSize: 13,
-    color: '#666',
   },
 });

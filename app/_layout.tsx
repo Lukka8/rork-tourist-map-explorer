@@ -8,6 +8,7 @@ import { Platform, View, Text } from "react-native";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { SocialProvider } from "@/lib/social-context";
 import { AttractionsProvider } from "@/lib/attractions-context";
+import { ThemeProvider } from "@/lib/theme-context";
 
 if (Platform.OS === 'web') {
   try {
@@ -103,17 +104,19 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <AttractionsProvider>
-          <SocialProvider>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-              <AuthGate>
-                <RootLayoutNav />
-              </AuthGate>
-            </GestureHandlerRootView>
-          </SocialProvider>
-        </AttractionsProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AttractionsProvider>
+            <SocialProvider>
+              <GestureHandlerRootView style={{ flex: 1 }}>
+                <AuthGate>
+                  <RootLayoutNav />
+                </AuthGate>
+              </GestureHandlerRootView>
+            </SocialProvider>
+          </AttractionsProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

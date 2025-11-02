@@ -1,12 +1,46 @@
-// template
-const tintColorLight = "#2f95dc";
-
-export default {
+export const Colors = {
   light: {
-    text: "#000",
-    background: "#fff",
-    tint: tintColorLight,
-    tabIconDefault: "#ccc",
-    tabIconSelected: tintColorLight,
+    primary: '#007AFF',
+    background: '#FFFFFF',
+    secondaryBackground: '#F5F7FA',
+    card: '#FFFFFF',
+    text: '#1a1a1a',
+    secondaryText: '#666666',
+    border: '#E5E5E5',
+    success: '#34C759',
+    error: '#FF3B30',
+    warning: '#FFD700',
+    overlay: 'rgba(0, 0, 0, 0.5)',
+    headerBackground: 'rgba(255, 255, 255, 0.95)',
+    tabBar: '#FFFFFF',
+    accent: '#007AFF',
+    heartRed: '#FF3B30',
+    mapPin: '#007AFF',
+    searchBackground: '#FFFFFF',
+    inputBackground: '#FFFFFF',
+    loadingBackground: '#F5F5F5',
+  },
+  dark: {
+    primary: '#0A84FF',
+    background: '#000000',
+    secondaryBackground: '#1C1C1E',
+    card: '#1C1C1E',
+    text: '#FFFFFF',
+    secondaryText: '#98989D',
+    border: '#38383A',
+    success: '#32D74B',
+    error: '#FF453A',
+    warning: '#FFD60A',
+    overlay: 'rgba(0, 0, 0, 0.7)',
+    headerBackground: 'rgba(28, 28, 30, 0.95)',
+    tabBar: '#1C1C1E',
+    accent: '#0A84FF',
+    heartRed: '#FF453A',
+    mapPin: '#0A84FF',
+    searchBackground: '#2C2C2E',
+    inputBackground: '#2C2C2E',
+    loadingBackground: '#1C1C1E',
   },
 };
+
+export type Theme = typeof Colors.light;

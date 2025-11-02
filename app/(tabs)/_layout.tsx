@@ -1,18 +1,21 @@
 import { Tabs } from 'expo-router';
 import { User, Compass, MessageSquareText } from 'lucide-react-native';
+import { useThemeColors } from '@/lib/use-theme-colors';
 
 export default function TabsLayout() {
+  const colors = useThemeColors();
+  
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: colors.tabBar,
           borderTopWidth: 1,
-          borderTopColor: '#E5E5E5',
+          borderTopColor: colors.border,
         },
-        tabBarActiveTintColor: '#007AFF',
-        tabBarInactiveTintColor: '#999',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.secondaryText,
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
