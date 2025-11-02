@@ -1,5 +1,5 @@
-import React, { forwardRef, useImperativeHandle, useRef } from 'react';
-import { View, ViewStyle } from 'react-native';
+import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { View, ViewStyle, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import RNMapView, { Marker as RNMarker, Polyline as RNPolyline, Region as RNRegion } from 'react-native-maps';
 
 export type Region = {
@@ -28,6 +28,7 @@ interface MapViewProps {
 export const MapView = forwardRef<MapRef, MapViewProps>(
   ({ children, style, initialRegion, mapType = 'standard', onLoad }, ref) => {
     const mapRef = useRef<RNMapView | null>(null);
+    const [isMapReady, setIsMapReady] = useState(false);
 
     useImperativeHandle(ref, () => ({
       animateToRegion: (region: Region, duration = 500) => {
@@ -42,18 +43,33 @@ export const MapView = forwardRef<MapRef, MapViewProps>(
       longitudeDelta: 0.15,
     }) as RNRegion;
 
+    const handleMapReady = () => {
+      console.log('[MapView Native] Map ready');
+      setIsMapReady(true);
+      onLoad?.();
+    };
+
     return (
-      <RNMapView
-        ref={mapRef}
-        style={style as any}
-        initialRegion={region}
-        mapType={mapType}
-        showsUserLocation
-        showsCompass
-        onMapReady={onLoad}
-      >
-        {children}
-      </RNMapView>
+      <View style={[localStyles.container, style]}>
+        <RNMapView
+          ref={mapRef}
+          style={StyleSheet.absoluteFill}
+          initialRegion={region}
+          mapType={mapType}
+          showsUserLocation
+          showsCompass
+          onMapReady={handleMapReady}
+        >
+          {children}
+        </RNMapView>
+        
+        {!isMapReady && (
+          <View style={localStyles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={localStyles.loadingText}>Loading map...</Text>
+          </View>
+        )}
+      </View>
     );
   },
 );
@@ -97,3 +113,23 @@ export const UserLocationMarker = ({ coordinate }: UserLocationMarkerProps) => (
     <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#007AFF', borderWidth: 2, borderColor: '#fff' }} />
   </RNMarker>
 );
+
+const localStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '600' as const,
+  },
+
+});
