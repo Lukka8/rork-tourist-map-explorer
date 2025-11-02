@@ -58,6 +58,8 @@ export const MapView = forwardRef<MapRef, MapViewProps>(
 
     const handleMapError = (event: any) => {
       console.error('[MapView Web] Map error:', event);
+      const errorMessage = event?.error?.message || event?.message || 'WebGL context error';
+      console.error('[MapView Web] Error details:', errorMessage);
       setMapError('Interactive map is not available. Please use a device or enable WebGL in your browser.');
     };
 
