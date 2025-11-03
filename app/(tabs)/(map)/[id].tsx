@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { Image } from 'expo-image';
+import { useThemeColors } from '@/lib/use-theme-colors';
 import {
   Star,
   Heart,
@@ -30,6 +31,7 @@ export default function AttractionDetailScreen() {
   const queryClient = useQueryClient();
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
+  const colors = useThemeColors();
 
   const reviewsQuery = useQuery({
     queryKey: ['reviews', id],
@@ -89,8 +91,8 @@ export default function AttractionDetailScreen() {
 
   if (!attraction) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Attraction not found</Text>
+      <View style={[styles.errorContainer, { backgroundColor: colors.secondaryBackground }]}>
+        <Text style={[styles.errorText, { color: colors.secondaryText }]}>Attraction not found</Text>
       </View>
     );
   }
@@ -143,7 +145,7 @@ export default function AttractionDetailScreen() {
         options={{
           title: attraction.name,
           headerStyle: {
-            backgroundColor: '#007AFF',
+            backgroundColor: colors.primary,
           },
           headerTintColor: '#FFF',
           headerTitleStyle: {
@@ -152,7 +154,7 @@ export default function AttractionDetailScreen() {
         }}
       />
       <KeyboardAvoidingView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.secondaryBackground }]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={100}
       >
@@ -170,15 +172,15 @@ export default function AttractionDetailScreen() {
               </Text>
             </View>
 
-            <Text style={styles.title}>{attraction.name}</Text>
+            <Text style={[styles.title, { color: colors.text }]}>{attraction.name}</Text>
 
             <View style={styles.statsRow}>
               <View style={styles.ratingContainer}>
                 <Star size={20} color="#FFD700" fill="#FFD700" />
-                <Text style={styles.ratingText}>
+                <Text style={[styles.ratingText, { color: colors.text }]}>
                   {averageRating > 0 ? averageRating.toFixed(1) : 'No ratings'}
                 </Text>
-                <Text style={styles.reviewCount}>
+                <Text style={[styles.reviewCount, { color: colors.secondaryText }]}>
                   ({reviews.length} {reviews.length === 1 ? 'review' : 'reviews'})
                 </Text>
               </View>
@@ -195,11 +197,11 @@ export default function AttractionDetailScreen() {
               <Text style={styles.factText}>{attraction.fact}</Text>
             </View>
 
-            <Text style={styles.description}>{attraction.description}</Text>
+            <Text style={[styles.description, { color: colors.secondaryText }]}>{attraction.description}</Text>
 
-            <View style={styles.locationContainer}>
-              <MapPin size={20} color="#007AFF" />
-              <Text style={styles.locationText}>
+            <View style={[styles.locationContainer, { backgroundColor: colors.primary + '20' }]}>
+              <MapPin size={20} color={colors.primary} />
+              <Text style={[styles.locationText, { color: colors.primary }]}>
                 {attraction.coordinate.latitude.toFixed(4)}, {attraction.coordinate.longitude.toFixed(4)}
               </Text>
             </View>
@@ -235,13 +237,13 @@ export default function AttractionDetailScreen() {
             </View>
 
             <View style={styles.reviewsSection}>
-              <Text style={styles.sectionTitle}>Reviews</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Reviews</Text>
 
-              <View style={styles.addReviewCard}>
-                <Text style={styles.addReviewTitle}>Write a Review</Text>
+              <View style={[styles.addReviewCard, { backgroundColor: colors.card, shadowColor: colors.text }]}>
+                <Text style={[styles.addReviewTitle, { color: colors.text }]}>Write a Review</Text>
 
                 <View style={styles.starRatingContainer}>
-                  <Text style={styles.starLabel}>Your Rating:</Text>
+                  <Text style={[styles.starLabel, { color: colors.secondaryText }]}>Your Rating:</Text>
                   <View style={styles.starButtons}>
                     {[1, 2, 3, 4, 5].map((star) => (
                       <TouchableOpacity
@@ -260,9 +262,9 @@ export default function AttractionDetailScreen() {
                 </View>
 
                 <TextInput
-                  style={styles.commentInput}
+                  style={[styles.commentInput, { backgroundColor: colors.inputBackground, borderColor: colors.border, color: colors.text }]}
                   placeholder="Share your experience..."
-                  placeholderTextColor="#999"
+                  placeholderTextColor={colors.secondaryText}
                   value={comment}
                   onChangeText={setComment}
                   multiline
@@ -271,7 +273,7 @@ export default function AttractionDetailScreen() {
                 />
 
                 <TouchableOpacity
-                  style={styles.submitButton}
+                  style={[styles.submitButton, { backgroundColor: colors.primary }]}
                   onPress={handleSubmitReview}
                   disabled={addReviewMutation.isPending}
                 >
@@ -287,36 +289,36 @@ export default function AttractionDetailScreen() {
               </View>
 
               {reviewsQuery.isLoading ? (
-                <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+                <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
               ) : reviews.length === 0 ? (
                 <View style={styles.emptyReviews}>
-                  <Star size={48} color="#E5E5E5" />
-                  <Text style={styles.emptyReviewsText}>No reviews yet</Text>
-                  <Text style={styles.emptyReviewsSubtext}>Be the first to review!</Text>
+                  <Star size={48} color={colors.border} />
+                  <Text style={[styles.emptyReviewsText, { color: colors.text }]}>No reviews yet</Text>
+                  <Text style={[styles.emptyReviewsSubtext, { color: colors.secondaryText }]}>Be the first to review!</Text>
                 </View>
               ) : (
                 reviews.map((review: any) => (
-                  <View key={review.id} style={styles.reviewCard}>
+                  <View key={review.id} style={[styles.reviewCard, { backgroundColor: colors.card, shadowColor: colors.text }]}>
                     <View style={styles.reviewHeader}>
                       <View style={styles.reviewerInfo}>
-                        <View style={styles.reviewerAvatar}>
-                          <User size={20} color="#007AFF" />
+                        <View style={[styles.reviewerAvatar, { backgroundColor: colors.primary + '20' }]}>
+                          <User size={20} color={colors.primary} />
                         </View>
                         <View>
-                          <Text style={styles.reviewerName}>
+                          <Text style={[styles.reviewerName, { color: colors.text }]}>
                             {review.user_name}
                           </Text>
                         </View>
                       </View>
                       <View style={styles.reviewRating}>
                         <Star size={16} color="#FFD700" fill="#FFD700" />
-                        <Text style={styles.reviewRatingText}>{review.rating}</Text>
+                        <Text style={[styles.reviewRatingText, { color: colors.text }]}>{review.rating}</Text>
                       </View>
                     </View>
                     {review.comment && (
-                      <Text style={styles.reviewComment}>{review.comment}</Text>
+                      <Text style={[styles.reviewComment, { color: colors.text }]}>{review.comment}</Text>
                     )}
-                    <Text style={styles.reviewDate}>
+                    <Text style={[styles.reviewDate, { color: colors.secondaryText }]}>
                       {new Date(review.created_at).toLocaleDateString()}
                     </Text>
                   </View>
@@ -333,7 +335,6 @@ export default function AttractionDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
   },
   scrollView: {
     flex: 1,
@@ -342,11 +343,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F7FA',
   },
   errorText: {
     fontSize: 18,
-    color: '#666',
   },
   heroImage: {
     width: '100%',
@@ -372,7 +371,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800' as const,
-    color: '#1a1a1a',
     marginBottom: 16,
     letterSpacing: -0.5,
   },
@@ -390,11 +388,9 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 18,
     fontWeight: '700' as const,
-    color: '#1a1a1a',
   },
   reviewCount: {
     fontSize: 14,
-    color: '#666',
   },
   visitedBadge: {
     flexDirection: 'row',
@@ -433,7 +429,6 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 16,
-    color: '#666',
     lineHeight: 24,
     marginBottom: 20,
   },
@@ -441,14 +436,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#E8F4FF',
     padding: 16,
     borderRadius: 12,
     marginBottom: 20,
   },
   locationText: {
     fontSize: 15,
-    color: '#007AFF',
     fontWeight: '600' as const,
   },
   actionButtons: {
@@ -496,15 +489,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 24,
     fontWeight: '800' as const,
-    color: '#1a1a1a',
     marginBottom: 20,
   },
   addReviewCard: {
-    backgroundColor: '#FFF',
     padding: 20,
     borderRadius: 16,
     marginBottom: 20,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -513,7 +503,6 @@ const styles = StyleSheet.create({
   addReviewTitle: {
     fontSize: 18,
     fontWeight: '700' as const,
-    color: '#1a1a1a',
     marginBottom: 16,
   },
   starRatingContainer: {
@@ -522,7 +511,6 @@ const styles = StyleSheet.create({
   starLabel: {
     fontSize: 15,
     fontWeight: '600' as const,
-    color: '#666',
     marginBottom: 8,
   },
   starButtons: {
@@ -533,21 +521,17 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   commentInput: {
-    backgroundColor: '#F5F7FA',
     borderRadius: 12,
     padding: 16,
     fontSize: 15,
-    color: '#333',
     minHeight: 100,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
   },
   submitButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#007AFF',
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
@@ -567,20 +551,16 @@ const styles = StyleSheet.create({
   emptyReviewsText: {
     fontSize: 18,
     fontWeight: '700' as const,
-    color: '#1a1a1a',
     marginTop: 16,
   },
   emptyReviewsSubtext: {
     fontSize: 14,
-    color: '#666',
     marginTop: 4,
   },
   reviewCard: {
-    backgroundColor: '#FFF',
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -601,14 +581,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#E8F4FF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   reviewerName: {
     fontSize: 15,
     fontWeight: '700' as const,
-    color: '#1a1a1a',
   },
   reviewerUsername: {
     fontSize: 13,
@@ -622,16 +600,13 @@ const styles = StyleSheet.create({
   reviewRatingText: {
     fontSize: 14,
     fontWeight: '700' as const,
-    color: '#1a1a1a',
   },
   reviewComment: {
     fontSize: 15,
-    color: '#333',
     lineHeight: 22,
     marginBottom: 8,
   },
   reviewDate: {
     fontSize: 12,
-    color: '#999',
   },
 });

@@ -13,11 +13,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Mail, Phone, CheckCircle2 } from 'lucide-react-native';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api-client';
+import { useThemeColors } from '@/lib/use-theme-colors';
 
 export default function VerifyScreen() {
   const { user, refreshUser } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
   const [emailCode, setEmailCode] = useState('');
   const [phoneCode, setPhoneCode] = useState('');
   const [isEmailVerified, setIsEmailVerified] = useState(false);
@@ -124,8 +126,8 @@ export default function VerifyScreen() {
 
   if (!user) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007AFF" />
+      <View style={[styles.container, { backgroundColor: colors.secondaryBackground }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -133,35 +135,35 @@ export default function VerifyScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Verify Account', headerShown: true }} />
-      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <View style={[styles.container, { backgroundColor: colors.secondaryBackground, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <View style={styles.content}>
           <View style={styles.header}>
-            <View style={styles.iconContainer}>
-              <CheckCircle2 size={48} color="#007AFF" strokeWidth={2} />
+            <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
+              <CheckCircle2 size={48} color={colors.primary} strokeWidth={2} />
             </View>
-            <Text style={styles.title}>Verify Your Account</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: colors.text }]}>Verify Your Account</Text>
+            <Text style={[styles.subtitle, { color: colors.secondaryText }]}>
               We&apos;ve sent verification codes to your email and phone
             </Text>
           </View>
 
           <View style={styles.verificationSection}>
-            <View style={styles.verificationCard}>
+            <View style={[styles.verificationCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={styles.cardHeader}>
                 <Mail size={24} color={isEmailVerified ? '#10B981' : '#007AFF'} />
-                <Text style={styles.cardTitle}>Email Verification</Text>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>Email Verification</Text>
                 {isEmailVerified && (
                   <CheckCircle2 size={20} color="#10B981" />
                 )}
               </View>
-              <Text style={styles.cardSubtitle}>{user.email}</Text>
+              <Text style={[styles.cardSubtitle, { color: colors.secondaryText }]}>{user.email}</Text>
 
               {!isEmailVerified ? (
                 <>
                   <TextInput
-                    style={styles.codeInput}
+                    style={[styles.codeInput, { backgroundColor: colors.inputBackground, borderColor: colors.border, color: colors.text }]}
                     placeholder="Enter 6-digit code"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={colors.secondaryText}
                     value={emailCode}
                     onChangeText={setEmailCode}
                     keyboardType="number-pad"
@@ -171,19 +173,19 @@ export default function VerifyScreen() {
 
                   <View style={styles.buttonRow}>
                     <TouchableOpacity
-                      style={[styles.sendButton, isSendingEmail && styles.buttonDisabled]}
+                      style={[styles.sendButton, { backgroundColor: colors.card, borderColor: colors.primary }, isSendingEmail && styles.buttonDisabled]}
                       onPress={handleSendEmailCode}
                       disabled={isSendingEmail}
                     >
                       {isSendingEmail ? (
-                        <ActivityIndicator size="small" color="#007AFF" />
+                        <ActivityIndicator size="small" color={colors.primary} />
                       ) : (
-                        <Text style={styles.sendButtonText}>Send Code</Text>
+                        <Text style={[styles.sendButtonText, { color: colors.primary }]}>Send Code</Text>
                       )}
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.verifyButton, isVerifyingEmail && styles.buttonDisabled]}
+                      style={[styles.verifyButton, { backgroundColor: colors.primary }, isVerifyingEmail && styles.buttonDisabled]}
                       onPress={handleVerifyEmail}
                       disabled={isVerifyingEmail || emailCode.length !== 6}
                     >
@@ -203,22 +205,22 @@ export default function VerifyScreen() {
               )}
             </View>
 
-            <View style={styles.verificationCard}>
+            <View style={[styles.verificationCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={styles.cardHeader}>
                 <Phone size={24} color={isPhoneVerified ? '#10B981' : '#007AFF'} />
-                <Text style={styles.cardTitle}>Phone Verification</Text>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>Phone Verification</Text>
                 {isPhoneVerified && (
                   <CheckCircle2 size={20} color="#10B981" />
                 )}
               </View>
-              <Text style={styles.cardSubtitle}>{user.phone}</Text>
+              <Text style={[styles.cardSubtitle, { color: colors.secondaryText }]}>{user.phone}</Text>
 
               {!isPhoneVerified ? (
                 <>
                   <TextInput
-                    style={styles.codeInput}
+                    style={[styles.codeInput, { backgroundColor: colors.inputBackground, borderColor: colors.border, color: colors.text }]}
                     placeholder="Enter 6-digit code"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={colors.secondaryText}
                     value={phoneCode}
                     onChangeText={setPhoneCode}
                     keyboardType="number-pad"
@@ -228,19 +230,19 @@ export default function VerifyScreen() {
 
                   <View style={styles.buttonRow}>
                     <TouchableOpacity
-                      style={[styles.sendButton, isSendingPhone && styles.buttonDisabled]}
+                      style={[styles.sendButton, { backgroundColor: colors.card, borderColor: colors.primary }, isSendingPhone && styles.buttonDisabled]}
                       onPress={handleSendPhoneCode}
                       disabled={isSendingPhone}
                     >
                       {isSendingPhone ? (
-                        <ActivityIndicator size="small" color="#007AFF" />
+                        <ActivityIndicator size="small" color={colors.primary} />
                       ) : (
-                        <Text style={styles.sendButtonText}>Send Code</Text>
+                        <Text style={[styles.sendButtonText, { color: colors.primary }]}>Send Code</Text>
                       )}
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.verifyButton, isVerifyingPhone && styles.buttonDisabled]}
+                      style={[styles.verifyButton, { backgroundColor: colors.primary }, isVerifyingPhone && styles.buttonDisabled]}
                       onPress={handleVerifyPhone}
                       disabled={isVerifyingPhone || phoneCode.length !== 6}
                     >
@@ -262,21 +264,21 @@ export default function VerifyScreen() {
           </View>
 
           <View style={{ marginTop: 24, gap: 16 }}>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#1a1a1a' }}>Made a mistake?</Text>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>Made a mistake?</Text>
             <View style={{ gap: 12 }}>
               <View>
-                <Text style={{ marginBottom: 8, color: '#666' }}>Change Email</Text>
+                <Text style={{ marginBottom: 8, color: colors.secondaryText }}>Change Email</Text>
                 <TextInput
-                  style={styles.inputInline}
+                  style={[styles.inputInline, { backgroundColor: colors.inputBackground, borderColor: colors.border, color: colors.text }]}
                   placeholder="Enter new email"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={colors.secondaryText}
                   value={newEmail}
                   onChangeText={setNewEmail}
                   autoCapitalize="none"
                   keyboardType="email-address"
                 />
                 <TouchableOpacity
-                  style={[styles.verifyButton, isUpdatingEmail && styles.buttonDisabled]}
+                  style={[styles.verifyButton, { backgroundColor: colors.primary }, isUpdatingEmail && styles.buttonDisabled]}
                   onPress={async () => {
                     if (!newEmail) return;
                     setIsUpdatingEmail(true);
@@ -298,17 +300,17 @@ export default function VerifyScreen() {
               </View>
 
               <View>
-                <Text style={{ marginBottom: 8, color: '#666' }}>Change Phone</Text>
+                <Text style={{ marginBottom: 8, color: colors.secondaryText }}>Change Phone</Text>
                 <TextInput
-                  style={styles.inputInline}
+                  style={[styles.inputInline, { backgroundColor: colors.inputBackground, borderColor: colors.border, color: colors.text }]}
                   placeholder="Enter new phone"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={colors.secondaryText}
                   value={newPhone}
                   onChangeText={setNewPhone}
                   keyboardType="phone-pad"
                 />
                 <TouchableOpacity
-                  style={[styles.verifyButton, isUpdatingPhone && styles.buttonDisabled]}
+                  style={[styles.verifyButton, { backgroundColor: colors.primary }, isUpdatingPhone && styles.buttonDisabled]}
                   onPress={async () => {
                     if (!newPhone) return;
                     setIsUpdatingPhone(true);
@@ -334,6 +336,7 @@ export default function VerifyScreen() {
           <TouchableOpacity
             style={[
               styles.continueButton,
+              { backgroundColor: colors.primary, shadowColor: colors.primary },
               (!isEmailVerified || !isPhoneVerified) && styles.buttonDisabled,
             ]}
             onPress={handleContinue}
@@ -356,7 +359,6 @@ export default function VerifyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
   },
   content: {
     flex: 1,
@@ -371,7 +373,6 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: '#E8F4FF',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
@@ -379,12 +380,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '800' as const,
-    color: '#1a1a1a',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
     paddingHorizontal: 20,
   },
@@ -392,11 +391,9 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   verificationCard: {
-    backgroundColor: '#FFF',
     borderRadius: 20,
     padding: 24,
     borderWidth: 2,
-    borderColor: '#E8E8E8',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -407,16 +404,13 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: '700' as const,
-    color: '#1a1a1a',
     flex: 1,
   },
   cardSubtitle: {
     fontSize: 14,
-    color: '#666',
     marginBottom: 20,
   },
   codeInput: {
-    backgroundColor: '#F8F9FA',
     borderRadius: 12,
     padding: 16,
     fontSize: 18,
@@ -424,7 +418,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 8,
     borderWidth: 2,
-    borderColor: '#E8E8E8',
     marginBottom: 16,
   },
   buttonRow: {
@@ -433,21 +426,17 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     flex: 1,
-    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#007AFF',
   },
   sendButtonText: {
-    color: '#007AFF',
     fontSize: 16,
     fontWeight: '700' as const,
   },
   verifyButton: {
     flex: 1,
-    backgroundColor: '#007AFF',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -458,12 +447,10 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
   },
   inputInline: {
-    backgroundColor: '#F8F9FA',
     borderRadius: 12,
     padding: 12,
     fontSize: 16,
     borderWidth: 2,
-    borderColor: '#E8E8E8',
     marginBottom: 12,
   },
   buttonDisabled: {
@@ -484,12 +471,10 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
   },
   continueButton: {
-    backgroundColor: '#007AFF',
     borderRadius: 16,
     padding: 18,
     alignItems: 'center',
     marginTop: 32,
-    shadowColor: '#007AFF',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

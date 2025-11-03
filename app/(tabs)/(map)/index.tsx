@@ -20,6 +20,7 @@ import { MapView, Marker, Polyline, UserLocationMarker, type Region as MapRegion
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'expo-router';
 import { useAttractions } from '@/lib/attractions-context';
+import { useThemeColors } from '@/lib/use-theme-colors';
 
 const { height } = Dimensions.get('window');
 
@@ -33,6 +34,7 @@ interface LocationCoords {
 export default function MapScreen() {
   const { isAuthenticated, isLoading: isAuthLoading, user } = useAuth();
   const router = useRouter();
+  const colors = useThemeColors();
   
   console.log('[MapScreen] Render - isAuthenticated:', isAuthenticated, 'isAuthLoading:', isAuthLoading);
   const [userLocation, setUserLocation] = useState<LocationCoords | null>(null);
@@ -231,22 +233,22 @@ export default function MapScreen() {
 
   if (isAuthLoading || isLoadingLocation) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Getting your location...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.loadingBackground }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.secondaryText }]}>Getting your location...</Text>
       </View>
     );
   }
 
   if (locationPermission === false) {
     return (
-      <View style={styles.errorContainer}>
-        <MapPin size={64} color="#999" />
-        <Text style={styles.errorTitle}>Location Permission Needed</Text>
-        <Text style={styles.errorText}>
+      <View style={[styles.errorContainer, { backgroundColor: colors.loadingBackground }]}>
+        <MapPin size={64} color={colors.border} />
+        <Text style={[styles.errorTitle, { color: colors.text }]}>Location Permission Needed</Text>
+        <Text style={[styles.errorText, { color: colors.secondaryText }]}>
           Please enable location permissions to explore nearby attractions
         </Text>
-        <TouchableOpacity style={styles.retryButton} onPress={requestLocationPermission}>
+        <TouchableOpacity style={[styles.retryButton, { backgroundColor: colors.primary }]} onPress={requestLocationPermission}>
           <Text style={styles.retryButtonText}>Grant Permission</Text>
         </TouchableOpacity>
       </View>
@@ -318,16 +320,16 @@ export default function MapScreen() {
       {renderMap()}
 
       <View style={styles.controlsContainer}>
-          <TouchableOpacity style={styles.controlButton} onPress={centerOnUser}>
-            <Navigation size={24} color="#007AFF" />
+          <TouchableOpacity style={[styles.controlButton, { backgroundColor: colors.card, shadowColor: colors.text }]} onPress={centerOnUser}>
+            <Navigation size={24} color={colors.primary} />
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.controlButton} onPress={toggleMapType}>
-            <Layers size={24} color="#007AFF" />
+          <TouchableOpacity style={[styles.controlButton, { backgroundColor: colors.card, shadowColor: colors.text }]} onPress={toggleMapType}>
+            <Layers size={24} color={colors.primary} />
           </TouchableOpacity>
         </View>
 
-      <View style={styles.headerContainer}>
+      <View style={[styles.headerContainer, { backgroundColor: colors.headerBackground, shadowColor: colors.text }]}>
         <View style={styles.header}>
           <TouchableOpacity
             testID="profile-button"
@@ -342,8 +344,8 @@ export default function MapScreen() {
             </View>
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
-            <Text style={styles.headerTitle}>Explore NYC</Text>
-            <Text style={styles.headerSubtitle}>
+            <Text style={[styles.headerTitle, { color: colors.primary }]}>Explore NYC</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.secondaryText }]}>
               {filteredAttractions.length} {filteredAttractions.length === 1 ? 'attraction' : 'attractions'} found
             </Text>
           </View>
@@ -351,21 +353,21 @@ export default function MapScreen() {
         </View>
         
         <View style={styles.searchContainer}>
-          <View style={styles.searchInputWrapper}>
-            <Search size={20} color="#999" style={styles.searchIcon} />
+          <View style={[styles.searchInputWrapper, { backgroundColor: colors.searchBackground, borderColor: colors.border }]}>
+            <Search size={20} color={colors.secondaryText} style={styles.searchIcon} />
             <TextInput 
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: colors.text }]}
               placeholder="Search attractions..."
-              placeholderTextColor="#999"
+              placeholderTextColor={colors.secondaryText}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
           </View>
           <TouchableOpacity 
-            style={[styles.filterButton, showFilters && styles.filterButtonActive]} 
+            style={[styles.filterButton, { backgroundColor: colors.searchBackground, borderColor: colors.border }, showFilters && { backgroundColor: colors.primary, borderColor: colors.primary }]} 
             onPress={() => setShowFilters(!showFilters)}
           >
-            <Filter size={20} color={showFilters ? '#FFF' : '#007AFF'} />
+            <Filter size={20} color={showFilters ? '#FFF' : colors.primary} />
           </TouchableOpacity>
         </View>
 
@@ -376,13 +378,15 @@ export default function MapScreen() {
                 key={category}
                 style={[
                   styles.categoryChip,
-                  selectedCategory === category && styles.categoryChipActive,
+                  { backgroundColor: colors.searchBackground, borderColor: colors.border },
+                  selectedCategory === category && { backgroundColor: colors.primary, borderColor: colors.primary },
                 ]}
                 onPress={() => setSelectedCategory(category)}
               >
                 <Text
                   style={[
                     styles.categoryChipText,
+                    { color: colors.secondaryText },
                     selectedCategory === category && styles.categoryChipTextActive,
                   ]}
                 >
@@ -401,9 +405,9 @@ export default function MapScreen() {
             { transform: [{ translateY: slideAnim }] },
           ]}
         >
-          <View style={styles.card}>
-            <TouchableOpacity style={styles.closeButton} onPress={closeCard}>
-              <X size={24} color="#333" />
+          <View style={[styles.card, { backgroundColor: colors.card, shadowColor: colors.text }]}>
+            <TouchableOpacity style={[styles.closeButton, { backgroundColor: colors.card, shadowColor: colors.text }]} onPress={closeCard}>
+              <X size={24} color={colors.text} />
             </TouchableOpacity>
 
             <Image
@@ -419,13 +423,13 @@ export default function MapScreen() {
                 </Text>
               </View>
 
-              <Text style={styles.cardTitle}>{selectedAttraction.name}</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>{selectedAttraction.name}</Text>
               
               <View style={styles.statsRow}>
                 {userLocation && (
                   <View style={styles.statItem}>
                     <Navigation size={16} color="#007AFF" />
-                    <Text style={styles.statText}>
+                    <Text style={[styles.statText, { color: colors.text }]}>
                       {getAttractionDistance(selectedAttraction)?.toFixed(1)} km
                     </Text>
                   </View>
@@ -449,7 +453,7 @@ export default function MapScreen() {
                 <Text style={styles.factText}>{selectedAttraction.fact}</Text>
               </View>
 
-              <Text style={styles.cardDescription}>
+              <Text style={[styles.cardDescription, { color: colors.secondaryText }]}>
                 {selectedAttraction.description}
               </Text>
 
@@ -463,7 +467,7 @@ export default function MapScreen() {
                     color={isFavorite(selectedAttraction.id) ? '#FFF' : '#FF3B30'}
                     fill={isFavorite(selectedAttraction.id) ? '#FFF' : 'none'}
                   />
-                  <Text style={[styles.actionButtonText, isFavorite(selectedAttraction.id) && styles.actionButtonTextActive]}>
+                  <Text style={[styles.actionButtonText, { color: colors.error }, isFavorite(selectedAttraction.id) && styles.actionButtonTextActive]}>
                     {isFavorite(selectedAttraction.id) ? 'Saved' : 'Save'}
                   </Text>
                 </TouchableOpacity>
@@ -477,7 +481,7 @@ export default function MapScreen() {
                     size={20} 
                     color={isVisited(selectedAttraction.id) ? '#FFF' : '#34C759'}
                   />
-                  <Text style={[styles.actionButtonText, isVisited(selectedAttraction.id) && styles.actionButtonTextActive]}>
+                  <Text style={[styles.actionButtonText, { color: colors.success }, isVisited(selectedAttraction.id) && styles.actionButtonTextActive]}>
                     {isVisited(selectedAttraction.id) ? 'Visited' : 'Check In'}
                   </Text>
                 </TouchableOpacity>
@@ -522,35 +526,29 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#666',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
     padding: 32,
   },
   errorTitle: {
     fontSize: 24,
     fontWeight: '700' as const,
-    color: '#333',
     marginTop: 24,
     marginBottom: 8,
   },
   errorText: {
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
     marginBottom: 24,
   },
   retryButton: {
-    backgroundColor: '#007AFF',
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 12,
@@ -568,10 +566,8 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -612,12 +608,10 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: '800' as const,
-    color: '#007AFF',
     letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#666',
     marginTop: 4,
   },
   controlsContainer: {
@@ -630,10 +624,8 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#FFF',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
@@ -662,11 +654,9 @@ const styles = StyleSheet.create({
   },
   card: {
     flex: 1,
-    backgroundColor: '#FFF',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     overflow: 'hidden',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
@@ -679,11 +669,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,
@@ -714,7 +702,6 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 28,
     fontWeight: '800' as const,
-    color: '#1a1a1a',
     marginBottom: 16,
     letterSpacing: -0.5,
   },
@@ -743,7 +730,6 @@ const styles = StyleSheet.create({
   },
   cardDescription: {
     fontSize: 16,
-    color: '#666',
     lineHeight: 24,
     marginBottom: 24,
   },
@@ -794,12 +780,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
   },
   searchIcon: {
     marginRight: 8,
@@ -807,21 +791,14 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
   },
   filterButton: {
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E5E5E5',
-  },
-  filterButtonActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
   },
   categoryFilter: {
     marginTop: 12,
@@ -831,19 +808,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#FFF',
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
-  },
-  categoryChipActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
   },
   categoryChipText: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: '#666',
   },
   categoryChipTextActive: {
     color: '#FFF',
@@ -867,7 +837,6 @@ const styles = StyleSheet.create({
   statText: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: '#333',
   },
   visitedBadge: {
     flexDirection: 'row',
@@ -917,7 +886,6 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 15,
     fontWeight: '700' as const,
-    color: '#333',
   },
   actionButtonTextActive: {
     color: '#FFF',
