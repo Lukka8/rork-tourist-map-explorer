@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { UserPlus, User, Mail, Phone, Lock, ChevronDown, Search, X } from 'lucide-react-native';
 import { useAuth } from '@/lib/auth-context';
+import { useThemeColors } from '@/lib/use-theme-colors';
 
 interface Country {
   code: string;
@@ -218,6 +219,7 @@ export default function RegisterScreen() {
   const [errorMessage, setErrorMessage] = useState('');
   const { register } = useAuth();
   const router = useRouter();
+  const colors = useThemeColors();
 
   const filteredCountries = countries.filter(
     (country) =>
@@ -291,7 +293,7 @@ export default function RegisterScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.secondaryBackground }]} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -302,22 +304,22 @@ export default function RegisterScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <View style={styles.iconContainer}>
-              <UserPlus size={48} color="#007AFF" strokeWidth={2} />
+            <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
+              <UserPlus size={48} color={colors.primary} strokeWidth={2} />
             </View>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join us and start exploring</Text>
+            <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
+            <Text style={[styles.subtitle, { color: colors.secondaryText }]}>Join us and start exploring</Text>
           </View>
 
           <View style={styles.form}>
-            <View style={styles.inputContainer}>
+            <View style={[styles.inputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
               <View style={styles.inputIconContainer}>
-                <User size={20} color="#666" />
+                <User size={20} color={colors.secondaryText} />
               </View>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 placeholder="Username"
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.secondaryText}
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
@@ -327,14 +329,14 @@ export default function RegisterScreen() {
             </View>
 
             <View style={styles.row}>
-              <View style={[styles.inputContainer, styles.halfWidth]}>
+              <View style={[styles.inputContainer, styles.halfWidth, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
                 <View style={styles.inputIconContainer}>
-                  <User size={20} color="#666" />
+                  <User size={20} color={colors.secondaryText} />
                 </View>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: colors.text }]}
                   placeholder="First Name"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={colors.secondaryText}
                   value={firstname}
                   onChangeText={setFirstname}
                   autoCapitalize="words"
@@ -342,14 +344,14 @@ export default function RegisterScreen() {
                 />
               </View>
 
-              <View style={[styles.inputContainer, styles.halfWidth]}>
+              <View style={[styles.inputContainer, styles.halfWidth, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
                 <View style={styles.inputIconContainer}>
-                  <User size={20} color="#666" />
+                  <User size={20} color={colors.secondaryText} />
                 </View>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: colors.text }]}
                   placeholder="Last Name"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={colors.secondaryText}
                   value={lastname}
                   onChangeText={setLastname}
                   autoCapitalize="words"
@@ -358,14 +360,14 @@ export default function RegisterScreen() {
               </View>
             </View>
 
-            <View style={styles.inputContainer}>
+            <View style={[styles.inputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
               <View style={styles.inputIconContainer}>
-                <Mail size={20} color="#666" />
+                <Mail size={20} color={colors.secondaryText} />
               </View>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 placeholder="Email"
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.secondaryText}
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
@@ -377,23 +379,23 @@ export default function RegisterScreen() {
 
             <View style={styles.phoneContainer}>
               <TouchableOpacity
-                style={styles.countrySelector}
+                style={[styles.countrySelector, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}
                 onPress={() => setShowCountryPicker(true)}
                 disabled={isLoading}
               >
                 <Text style={styles.flagText}>{selectedCountry.flag}</Text>
-                <Text style={styles.dialCode}>{selectedCountry.dialCode}</Text>
-                <ChevronDown size={16} color="#666" />
+                <Text style={[styles.dialCode, { color: colors.text }]}>{selectedCountry.dialCode}</Text>
+                <ChevronDown size={16} color={colors.secondaryText} />
               </TouchableOpacity>
               
-              <View style={styles.phoneInputContainer}>
+              <View style={[styles.phoneInputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
                 <View style={styles.inputIconContainer}>
-                  <Phone size={20} color="#666" />
+                  <Phone size={20} color={colors.secondaryText} />
                 </View>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: colors.text }]}
                   placeholder="Phone Number"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={colors.secondaryText}
                   value={phone}
                   onChangeText={setPhone}
                   keyboardType="phone-pad"
@@ -402,14 +404,14 @@ export default function RegisterScreen() {
               </View>
             </View>
 
-            <View style={styles.inputContainer}>
+            <View style={[styles.inputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
               <View style={styles.inputIconContainer}>
-                <Lock size={20} color="#666" />
+                <Lock size={20} color={colors.secondaryText} />
               </View>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 placeholder="Password"
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.secondaryText}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -418,14 +420,14 @@ export default function RegisterScreen() {
               />
             </View>
 
-            <View style={styles.inputContainer}>
+            <View style={[styles.inputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
               <View style={styles.inputIconContainer}>
-                <Lock size={20} color="#666" />
+                <Lock size={20} color={colors.secondaryText} />
               </View>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 placeholder="Confirm Password"
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.secondaryText}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
@@ -435,13 +437,13 @@ export default function RegisterScreen() {
             </View>
 
             {errorMessage ? (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{errorMessage}</Text>
+              <View style={[styles.errorContainer, { backgroundColor: colors.error + '20', borderColor: colors.error + '40' }]}>
+                <Text style={[styles.errorText, { color: colors.error }]}>{errorMessage}</Text>
               </View>
             ) : null}
 
             <TouchableOpacity
-              style={[styles.registerButton, isLoading && styles.registerButtonDisabled]}
+              style={[styles.registerButton, { backgroundColor: colors.primary, shadowColor: colors.primary }, isLoading && styles.registerButtonDisabled]}
               onPress={handleRegister}
               disabled={isLoading}
             >
@@ -456,17 +458,17 @@ export default function RegisterScreen() {
             </TouchableOpacity>
 
             <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              <Text style={[styles.dividerText, { color: colors.secondaryText }]}>or</Text>
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
             </View>
 
             <TouchableOpacity
-              style={styles.loginButton}
+              style={[styles.loginButton, { borderColor: colors.primary, backgroundColor: colors.card }]}
               onPress={() => router.back()}
               disabled={isLoading}
             >
-              <Text style={styles.loginButtonText}>Already have an account? Sign In</Text>
+              <Text style={[styles.loginButtonText, { color: colors.primary }]}>Already have an account? Sign In</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -478,10 +480,10 @@ export default function RegisterScreen() {
         transparent={true}
         onRequestClose={() => setShowCountryPicker(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Country</Text>
+        <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Select Country</Text>
               <TouchableOpacity
                 onPress={() => {
                   setShowCountryPicker(false);
@@ -489,16 +491,16 @@ export default function RegisterScreen() {
                 }}
                 style={styles.closeButton}
               >
-                <X size={24} color="#666" />
+                <X size={24} color={colors.secondaryText} />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.searchContainer}>
-              <Search size={20} color="#666" />
+            <View style={[styles.searchContainer, { backgroundColor: colors.secondaryBackground }]}>
+              <Search size={20} color={colors.secondaryText} />
               <TextInput
-                style={styles.searchInput}
+                style={[styles.searchInput, { color: colors.text }]}
                 placeholder="Search country..."
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.secondaryText}
                 value={countrySearch}
                 onChangeText={setCountrySearch}
                 autoCapitalize="none"
@@ -515,7 +517,8 @@ export default function RegisterScreen() {
                 <TouchableOpacity
                   style={[
                     styles.countryItem,
-                    selectedCountry.code === item.code && styles.selectedCountryItem,
+                    { borderBottomColor: colors.border },
+                    selectedCountry.code === item.code && { backgroundColor: colors.primary + '20' },
                   ]}
                   onPress={() => {
                     setSelectedCountry(item);
@@ -524,8 +527,8 @@ export default function RegisterScreen() {
                   }}
                 >
                   <Text style={styles.countryFlag}>{item.flag}</Text>
-                  <Text style={styles.countryName}>{item.name}</Text>
-                  <Text style={styles.countryDialCode}>{item.dialCode}</Text>
+                  <Text style={[styles.countryName, { color: colors.text }]}>{item.name}</Text>
+                  <Text style={[styles.countryDialCode, { color: colors.secondaryText }]}>{item.dialCode}</Text>
                 </TouchableOpacity>
               )}
             />
@@ -539,7 +542,6 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
   },
   keyboardView: {
     flex: 1,
@@ -558,7 +560,6 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: '#E8F4FF',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
@@ -566,12 +567,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800' as const,
-    color: '#1a1a1a',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
   },
   form: {
     width: '100%',
@@ -586,12 +585,10 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
     borderRadius: 16,
     marginBottom: 16,
     paddingHorizontal: 16,
     borderWidth: 2,
-    borderColor: '#E8E8E8',
   },
   inputIconContainer: {
     marginRight: 12,
@@ -600,18 +597,15 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 56,
     fontSize: 16,
-    color: '#1a1a1a',
   },
   registerButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#007AFF',
     height: 56,
     borderRadius: 16,
     marginTop: 8,
     gap: 8,
-    shadowColor: '#007AFF',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -633,12 +627,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E8E8E8',
   },
   dividerText: {
     marginHorizontal: 16,
     fontSize: 14,
-    color: '#999',
     fontWeight: '600' as const,
   },
   loginButton: {
@@ -647,11 +639,8 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#007AFF',
-    backgroundColor: '#FFF',
   },
   loginButtonText: {
-    color: '#007AFF',
     fontSize: 17,
     fontWeight: '700' as const,
   },
@@ -663,11 +652,9 @@ const styles = StyleSheet.create({
   countrySelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
     borderRadius: 16,
     paddingHorizontal: 16,
     borderWidth: 2,
-    borderColor: '#E8E8E8',
     gap: 8,
     minWidth: 110,
   },
@@ -676,40 +663,32 @@ const styles = StyleSheet.create({
   },
   dialCode: {
     fontSize: 16,
-    color: '#1a1a1a',
     fontWeight: '600' as const,
   },
   phoneInputContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
     borderRadius: 16,
     paddingHorizontal: 16,
     borderWidth: 2,
-    borderColor: '#E8E8E8',
   },
   errorContainer: {
-    backgroundColor: '#FEE2E2',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#FCA5A5',
   },
   errorText: {
-    color: '#DC2626',
     fontSize: 14,
     fontWeight: '600' as const,
     textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '80%',
@@ -721,12 +700,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E8E8E8',
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '700' as const,
-    color: '#1a1a1a',
   },
   closeButton: {
     padding: 4,
@@ -734,7 +711,6 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
     borderRadius: 12,
     paddingHorizontal: 16,
     margin: 16,
@@ -744,7 +720,6 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     fontSize: 16,
-    color: '#1a1a1a',
   },
   countryList: {
     flex: 1,
@@ -756,10 +731,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F8F9FA',
-  },
-  selectedCountryItem: {
-    backgroundColor: '#E8F4FF',
   },
   countryFlag: {
     fontSize: 28,
@@ -768,12 +739,10 @@ const styles = StyleSheet.create({
   countryName: {
     flex: 1,
     fontSize: 16,
-    color: '#1a1a1a',
     fontWeight: '500' as const,
   },
   countryDialCode: {
     fontSize: 16,
-    color: '#666',
     fontWeight: '600' as const,
   },
 });

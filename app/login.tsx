@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LogIn, User, Lock } from 'lucide-react-native';
 import { useAuth } from '@/lib/auth-context';
+import { useThemeColors } from '@/lib/use-theme-colors';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -22,6 +23,7 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
+  const colors = useThemeColors();
   
   console.log('[LoginScreen] Rendered');
 
@@ -50,7 +52,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.secondaryBackground }]} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -60,22 +62,22 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <View style={styles.iconContainer}>
-              <LogIn size={48} color="#007AFF" strokeWidth={2} />
+            <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
+              <LogIn size={48} color={colors.primary} strokeWidth={2} />
             </View>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to continue exploring</Text>
+            <Text style={[styles.title, { color: colors.text }]}>Welcome Back</Text>
+            <Text style={[styles.subtitle, { color: colors.secondaryText }]}>Sign in to continue exploring</Text>
           </View>
 
           <View style={styles.form}>
-            <View style={styles.inputContainer}>
+            <View style={[styles.inputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
               <View style={styles.inputIconContainer}>
-                <User size={20} color="#666" />
+                <User size={20} color={colors.secondaryText} />
               </View>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 placeholder="Email"
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.secondaryText}
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
@@ -85,14 +87,14 @@ export default function LoginScreen() {
               />
             </View>
 
-            <View style={styles.inputContainer}>
+            <View style={[styles.inputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
               <View style={styles.inputIconContainer}>
-                <Lock size={20} color="#666" />
+                <Lock size={20} color={colors.secondaryText} />
               </View>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 placeholder="Password"
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.secondaryText}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -102,7 +104,7 @@ export default function LoginScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
+              style={[styles.loginButton, { backgroundColor: colors.primary, shadowColor: colors.primary }, isLoading && styles.loginButtonDisabled]}
               onPress={handleLogin}
               disabled={isLoading}
             >
@@ -117,17 +119,17 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              <Text style={[styles.dividerText, { color: colors.secondaryText }]}>or</Text>
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
             </View>
 
             <TouchableOpacity
-              style={styles.registerButton}
+              style={[styles.registerButton, { borderColor: colors.primary, backgroundColor: colors.card }]}
               onPress={() => router.push('/register')}
               disabled={isLoading}
             >
-              <Text style={styles.registerButtonText}>Create New Account</Text>
+              <Text style={[styles.registerButtonText, { color: colors.primary }]}>Create New Account</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -139,7 +141,6 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
   },
   keyboardView: {
     flex: 1,
@@ -157,7 +158,6 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: '#E8F4FF',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
@@ -165,12 +165,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800' as const,
-    color: '#1a1a1a',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
   },
   form: {
     width: '100%',
@@ -178,12 +176,10 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
     borderRadius: 16,
     marginBottom: 16,
     paddingHorizontal: 16,
     borderWidth: 2,
-    borderColor: '#E8E8E8',
   },
   inputIconContainer: {
     marginRight: 12,
@@ -192,18 +188,15 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 56,
     fontSize: 16,
-    color: '#1a1a1a',
   },
   loginButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#007AFF',
     height: 56,
     borderRadius: 16,
     marginTop: 8,
     gap: 8,
-    shadowColor: '#007AFF',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -225,12 +218,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E8E8E8',
   },
   dividerText: {
     marginHorizontal: 16,
     fontSize: 14,
-    color: '#999',
     fontWeight: '600' as const,
   },
   registerButton: {
@@ -239,11 +230,8 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#007AFF',
-    backgroundColor: '#FFF',
   },
   registerButtonText: {
-    color: '#007AFF',
     fontSize: 17,
     fontWeight: '700' as const,
   },

@@ -5,12 +5,14 @@ import { useSocial } from '@/lib/social-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Image as ExpoImage } from 'expo-image';
 import { ImagePlus, Send } from 'lucide-react-native';
+import { useThemeColors } from '@/lib/use-theme-colors';
 
 export default function ChatScreen() {
   const { chatId } = useLocalSearchParams<{ chatId: string }>();
   const { chats, messagesByChat, sendMessage } = useSocial();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const colors = useThemeColors();
 
   const chat = useMemo(() => chats.find(c => c.id === chatId), [chats, chatId]);
   const messages = messagesByChat[chatId ?? ''] ?? [];
@@ -32,35 +34,35 @@ export default function ChatScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#F5F7FA' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.secondaryBackground }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={{ flex: 1 }}>
         <FlatList
           data={messages}
           keyExtractor={(m) => m.id}
           renderItem={({ item }) => (
-            <View style={[styles.msg, item.senderId === 'me' ? styles.me : styles.them]}>
+            <View style={[styles.msg, item.senderId === 'me' ? { ...styles.me, backgroundColor: colors.primary } : { ...styles.them, backgroundColor: colors.card }]}>
               {item.parts.map((p, idx) => p.type === 'text' ? (
-                <Text key={idx} style={styles.msgText}>{p.text}</Text>
+                <Text key={idx} style={[styles.msgText, item.senderId === 'me' ? { color: '#FFF' } : { color: colors.text }]}>{p.text}</Text>
               ) : (
                 <ExpoImage key={idx} source={{ uri: p.uri }} style={styles.msgImage} contentFit="cover" />
               ))}
-              <Text style={styles.msgTime}>{new Date(item.createdAt).toLocaleTimeString()}</Text>
+              <Text style={[styles.msgTime, item.senderId === 'me' ? { color: '#FFF' } : { color: colors.secondaryText }]}>{new Date(item.createdAt).toLocaleTimeString()}</Text>
             </View>
           )}
           contentContainerStyle={{ padding: 12 }}
         />
-        <View style={styles.inputRow}>
-          <TouchableOpacity onPress={pickImage} style={styles.mediaBtn}>
-            <ImagePlus size={20} color="#007AFF" />
+        <View style={[styles.inputRow, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+          <TouchableOpacity onPress={pickImage} style={[styles.mediaBtn, { backgroundColor: colors.primary + '20' }]}>
+            <ImagePlus size={20} color={colors.primary} />
           </TouchableOpacity>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.inputBackground }]}
             placeholder="Message"
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.secondaryText}
             value={text}
             onChangeText={setText}
           />
-          <TouchableOpacity onPress={onSend} disabled={sending || !text.trim()} style={[styles.sendBtn, (!text.trim() || sending) && { opacity: 0.5 }]}>
+          <TouchableOpacity onPress={onSend} disabled={sending || !text.trim()} style={[styles.sendBtn, { backgroundColor: colors.primary }, (!text.trim() || sending) && { opacity: 0.5 }]}>
             <Send size={18} color="#FFF" />
           </TouchableOpacity>
         </View>
@@ -71,13 +73,13 @@ export default function ChatScreen() {
 
 const styles = StyleSheet.create({
   msg: { maxWidth: '80%', marginBottom: 8, padding: 10, borderRadius: 14 },
-  me: { alignSelf: 'flex-end', backgroundColor: '#007AFF' },
-  them: { alignSelf: 'flex-start', backgroundColor: '#E5E7EB' },
-  msgText: { color: '#FFF' },
+  me: { alignSelf: 'flex-end' },
+  them: { alignSelf: 'flex-start' },
+  msgText: {},
   msgImage: { width: 220, height: 180, borderRadius: 12 },
-  msgTime: { fontSize: 10, color: '#FFF', marginTop: 4, alignSelf: 'flex-end' },
-  inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#EEE' },
-  mediaBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#EEF6FF' },
-  input: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1, borderColor: '#E5E5E5', paddingHorizontal: 12 },
-  sendBtn: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#007AFF' },
+  msgTime: { fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
+  inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderTopWidth: 1 },
+  mediaBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  input: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1, paddingHorizontal: 12 },
+  sendBtn: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 });
