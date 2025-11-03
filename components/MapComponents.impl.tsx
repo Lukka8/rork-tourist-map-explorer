@@ -57,9 +57,7 @@ export const MapView = forwardRef<MapRef, MapViewProps>(
       : 'https://demotiles.maplibre.org/style.json';
 
     const handleMapError = (event: any) => {
-      console.error('[MapView Web] Map error:', event);
-      const errorMessage = event?.error?.message || event?.message || 'WebGL context error';
-      console.error('[MapView Web] Error details:', errorMessage);
+      console.log('[MapView Web] Map rendering not available - falling back to static view');
       setMapError('Interactive map is not available. Please use a device or enable WebGL in your browser.');
     };
 
