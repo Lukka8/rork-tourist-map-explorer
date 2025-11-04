@@ -14,6 +14,7 @@ import {
 import * as Location from 'expo-location';
 import { Image } from 'expo-image';
 import { MapPin, X, Navigation, Layers, Heart, Search, Filter, Star, CheckCircle2 } from 'lucide-react-native';
+import { AdBanner } from '@/components/AdBanner';
 import { NYC_ATTRACTIONS, Attraction } from '@/constants/attractions';
 import { StatusBar } from 'expo-status-bar';
 import { MapView, Marker, Polyline, UserLocationMarker, type Region as MapRegion, type MapRef } from '@/components/MapComponents';
@@ -46,6 +47,7 @@ export default function MapScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [attractionViewCount, setAttractionViewCount] = useState(0);
 
   const attractions = useAttractions();
   const { favorites, visited, isFavorite, isVisited, addFavorite: addFav, removeFavorite: removeFav, addVisited: addVis } = attractions;
@@ -144,6 +146,7 @@ export default function MapScreen() {
   const handleMarkerPress = (attraction: Attraction) => {
     setSelectedAttraction(attraction);
     setShowDirections(false);
+    setAttractionViewCount(prev => prev + 1);
     
     Animated.spring(slideAnim, {
       toValue: 0,
@@ -456,6 +459,12 @@ export default function MapScreen() {
               <Text style={[styles.cardDescription, { color: colors.secondaryText }]}>
                 {selectedAttraction.description}
               </Text>
+
+              {attractionViewCount > 0 && attractionViewCount % 3 === 0 && (
+                <View style={styles.adBannerContainer}>
+                  <AdBanner size="medium-rectangle" />
+                </View>
+              )}
 
               <View style={styles.actionButtons}>
                 <TouchableOpacity
@@ -889,5 +898,8 @@ const styles = StyleSheet.create({
   },
   actionButtonTextActive: {
     color: '#FFF',
+  },
+  adBannerContainer: {
+    marginBottom: 20,
   },
 });
