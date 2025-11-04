@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -23,67 +22,18 @@ import {
   Send,
 } from 'lucide-react-native';
 import { NYC_ATTRACTIONS } from '@/constants/attractions';
-import { api } from '@/lib/api-client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAttractions } from '@/lib/attractions-context';
 
 export default function AttractionDetailScreen() {
   const { id } = useLocalSearchParams();
-  const queryClient = useQueryClient();
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
+  const [reviews, setReviews] = useState<any[]>([]);
   const colors = useThemeColors();
-
-  const reviewsQuery = useQuery({
-    queryKey: ['reviews', id],
-    queryFn: () => api.reviews.list(id as string),
-  });
-  
-  const addReviewMutation = useMutation({
-    mutationFn: (data: { attractionId: string; rating: number; comment?: string }) => 
-      api.reviews.add(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['reviews', id] });
-    },
-  });
-  
-  const favoritesQuery = useQuery({
-    queryKey: ['favorites'],
-    queryFn: () => api.favorites.list(),
-  });
-  
-  const visitedQuery = useQuery({
-    queryKey: ['visited'],
-    queryFn: () => api.visited.list(),
-  });
-  
-  const addFavoriteMutation = useMutation({
-    mutationFn: (attractionId: string) => api.favorites.add(attractionId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['favorites'] });
-    },
-  });
-  
-  const removeFavoriteMutation = useMutation({
-    mutationFn: (attractionId: string) => api.favorites.remove(attractionId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['favorites'] });
-    },
-  });
-  
-  const addVisitedMutation = useMutation({
-    mutationFn: (attractionId: string) => api.visited.add(attractionId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['visited'] });
-    },
-  });
+  const attractions = useAttractions();
+  const { isFavorite, isVisited, addFavorite, removeFavorite, addVisited } = attractions;
 
   const attraction = NYC_ATTRACTIONS.find((a) => a.id === id);
-  const reviews = reviewsQuery.data || [];
-  const favorites = favoritesQuery.data || [];
-  const visited = visitedQuery.data || [];
-
-  const isFavorite = favorites.includes(id as string);
-  const isVisited = visited.includes(id as string);
 
   const averageRating = reviews.length > 0
     ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
@@ -103,39 +53,33 @@ export default function AttractionDetailScreen() {
       return;
     }
 
-    try {
-      await addReviewMutation.mutateAsync({
-        attractionId: id as string,
-        rating,
-        comment: comment.trim(),
-      });
-      setComment('');
-      setRating(5);
-      Alert.alert('Success', 'Review submitted successfully!');
-    } catch {
-      Alert.alert('Error', 'Failed to submit review');
-    }
+    const newReview = {
+      id: Date.now(),
+      user_id: 1,
+      attraction_id: id as string,
+      rating,
+      comment: comment.trim(),
+      created_at: new Date().toISOString(),
+      user_name: 'Demo User',
+    };
+    
+    setReviews([...reviews, newReview]);
+    setComment('');
+    setRating(5);
+    Alert.alert('Success', 'Review submitted successfully!');
   };
 
   const toggleFavorite = async () => {
-    try {
-      if (isFavorite) {
-        await removeFavoriteMutation.mutateAsync(id as string);
-      } else {
-        await addFavoriteMutation.mutateAsync(id as string);
-      }
-    } catch {
-      Alert.alert('Error', 'Failed to update favorite');
+    if (isFavorite(id as string)) {
+      await removeFavorite(id as string);
+    } else {
+      await addFavorite(id as string);
     }
   };
 
   const toggleVisited = async () => {
-    if (!isVisited) {
-      try {
-        await addVisitedMutation.mutateAsync(id as string);
-      } catch {
-        Alert.alert('Error', 'Failed to check in');
-      }
+    if (!isVisited(id as string)) {
+      await addVisited(id as string);
     }
   };
 
@@ -184,7 +128,7 @@ export default function AttractionDetailScreen() {
                   ({reviews.length} {reviews.length === 1 ? 'review' : 'reviews'})
                 </Text>
               </View>
-              {isVisited && (
+              {isVisited(id as string) && (
                 <View style={styles.visitedBadge}>
                   <CheckCircle2 size={16} color="#34C759" />
                   <Text style={styles.visitedText}>Visited</Text>
@@ -208,30 +152,30 @@ export default function AttractionDetailScreen() {
 
             <View style={styles.actionButtons}>
               <TouchableOpacity
-                style={[styles.actionButton, styles.favoriteButton, isFavorite && styles.favoriteButtonActive]}
+                style={[styles.actionButton, styles.favoriteButton, isFavorite(id as string) && styles.favoriteButtonActive]}
                 onPress={toggleFavorite}
               >
                 <Heart
                   size={20}
-                  color={isFavorite ? '#FFF' : '#FF3B30'}
-                  fill={isFavorite ? '#FFF' : 'none'}
+                  color={isFavorite(id as string) ? '#FFF' : '#FF3B30'}
+                  fill={isFavorite(id as string) ? '#FFF' : 'none'}
                 />
-                <Text style={[styles.actionButtonText, isFavorite && styles.actionButtonTextActive]}>
-                  {isFavorite ? 'Saved' : 'Save'}
+                <Text style={[styles.actionButtonText, isFavorite(id as string) && styles.actionButtonTextActive]}>
+                  {isFavorite(id as string) ? 'Saved' : 'Save'}
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.actionButton, styles.visitedButton, isVisited && styles.visitedButtonActive]}
+                style={[styles.actionButton, styles.visitedButton, isVisited(id as string) && styles.visitedButtonActive]}
                 onPress={toggleVisited}
-                disabled={isVisited}
+                disabled={isVisited(id as string)}
               >
                 <CheckCircle2
                   size={20}
-                  color={isVisited ? '#FFF' : '#34C759'}
+                  color={isVisited(id as string) ? '#FFF' : '#34C759'}
                 />
-                <Text style={[styles.actionButtonText, isVisited && styles.actionButtonTextActive]}>
-                  {isVisited ? 'Visited' : 'Check In'}
+                <Text style={[styles.actionButtonText, isVisited(id as string) && styles.actionButtonTextActive]}>
+                  {isVisited(id as string) ? 'Visited' : 'Check In'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -275,22 +219,13 @@ export default function AttractionDetailScreen() {
                 <TouchableOpacity
                   style={[styles.submitButton, { backgroundColor: colors.primary }]}
                   onPress={handleSubmitReview}
-                  disabled={addReviewMutation.isPending}
                 >
-                  {addReviewMutation.isPending ? (
-                    <ActivityIndicator color="#FFF" />
-                  ) : (
-                    <>
-                      <Send size={20} color="#FFF" />
-                      <Text style={styles.submitButtonText}>Submit Review</Text>
-                    </>
-                  )}
+                  <Send size={20} color="#FFF" />
+                  <Text style={styles.submitButtonText}>Submit Review</Text>
                 </TouchableOpacity>
               </View>
 
-              {reviewsQuery.isLoading ? (
-                <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
-              ) : reviews.length === 0 ? (
+              {reviews.length === 0 ? (
                 <View style={styles.emptyReviews}>
                   <Star size={48} color={colors.border} />
                   <Text style={[styles.emptyReviewsText, { color: colors.text }]}>No reviews yet</Text>

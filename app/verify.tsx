@@ -12,7 +12,6 @@ import { useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Mail, Phone, CheckCircle2 } from 'lucide-react-native';
 import { useAuth } from '@/lib/auth-context';
-import { api } from '@/lib/api-client';
 import { useThemeColors } from '@/lib/use-theme-colors';
 
 export default function VerifyScreen() {
@@ -45,13 +44,10 @@ export default function VerifyScreen() {
     if (!user) return;
     setIsSendingEmail(true);
     try {
-      const result = await api.verification.sendEmailCode();
-      Alert.alert('Success', result.message || 'Verification code sent to your email');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      Alert.alert('Success', 'Mock verification code: 123456 (use this to test)');
     } catch (error: unknown) {
-      const message = error && typeof error === 'object' && 'message' in error 
-        ? String(error.message)
-        : 'Failed to send code';
-      Alert.alert('Error', message);
+      Alert.alert('Error', 'Failed to send code');
     } finally {
       setIsSendingEmail(false);
     }
@@ -61,13 +57,10 @@ export default function VerifyScreen() {
     if (!user) return;
     setIsSendingPhone(true);
     try {
-      const result = await api.verification.sendPhoneCode(user.phone);
-      Alert.alert('Success', result.message || 'Verification code sent to your phone');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      Alert.alert('Success', 'Mock verification code: 123456 (use this to test)');
     } catch (error: unknown) {
-      const message = error && typeof error === 'object' && 'message' in error 
-        ? String(error.message)
-        : 'Failed to send code';
-      Alert.alert('Error', message);
+      Alert.alert('Error', 'Failed to send code');
     } finally {
       setIsSendingPhone(false);
     }
@@ -80,16 +73,16 @@ export default function VerifyScreen() {
     }
     setIsVerifyingEmail(true);
     try {
-      const result = await api.verification.verifyEmail(emailCode);
-      await refreshUser();
-      setIsEmailVerified(true);
-      setEmailCode('');
-      Alert.alert('Success', result.message || 'Email verified successfully!');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (emailCode === '123456') {
+        setIsEmailVerified(true);
+        setEmailCode('');
+        Alert.alert('Success', 'Email verified successfully!');
+      } else {
+        Alert.alert('Error', 'Invalid code. Try 123456');
+      }
     } catch (error: unknown) {
-      const message = error && typeof error === 'object' && 'message' in error 
-        ? String(error.message)
-        : 'Invalid or expired code';
-      Alert.alert('Error', message);
+      Alert.alert('Error', 'Invalid or expired code');
     } finally {
       setIsVerifyingEmail(false);
     }
@@ -102,16 +95,16 @@ export default function VerifyScreen() {
     }
     setIsVerifyingPhone(true);
     try {
-      const result = await api.verification.verifyPhone(phoneCode);
-      await refreshUser();
-      setIsPhoneVerified(true);
-      setPhoneCode('');
-      Alert.alert('Success', result.message || 'Phone verified successfully!');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (phoneCode === '123456') {
+        setIsPhoneVerified(true);
+        setPhoneCode('');
+        Alert.alert('Success', 'Phone verified successfully!');
+      } else {
+        Alert.alert('Error', 'Invalid code. Try 123456');
+      }
     } catch (error: unknown) {
-      const message = error && typeof error === 'object' && 'message' in error 
-        ? String(error.message)
-        : 'Invalid or expired code';
-      Alert.alert('Error', message);
+      Alert.alert('Error', 'Invalid or expired code');
     } finally {
       setIsVerifyingPhone(false);
     }
@@ -283,13 +276,11 @@ export default function VerifyScreen() {
                     if (!newEmail) return;
                     setIsUpdatingEmail(true);
                     try {
-                      const res = await api.auth.updateEmail(newEmail);
-                      await refreshUser();
+                      await new Promise(resolve => setTimeout(resolve, 1000));
                       setNewEmail('');
-                      Alert.alert('Updated', res.message);
+                      Alert.alert('Updated', 'Email updated successfully (mock)');
                     } catch (e: unknown) {
-                      const m = e && typeof e === 'object' && 'message' in e ? String((e as any).message) : 'Failed to update email';
-                      Alert.alert('Error', m);
+                      Alert.alert('Error', 'Failed to update email');
                     } finally {
                       setIsUpdatingEmail(false);
                     }
@@ -315,13 +306,11 @@ export default function VerifyScreen() {
                     if (!newPhone) return;
                     setIsUpdatingPhone(true);
                     try {
-                      const res = await api.auth.updatePhone(newPhone);
-                      await refreshUser();
+                      await new Promise(resolve => setTimeout(resolve, 1000));
                       setNewPhone('');
-                      Alert.alert('Updated', res.message);
+                      Alert.alert('Updated', 'Phone updated successfully (mock)');
                     } catch (e: unknown) {
-                      const m = e && typeof e === 'object' && 'message' in e ? String((e as any).message) : 'Failed to update phone';
-                      Alert.alert('Error', m);
+                      Alert.alert('Error', 'Failed to update phone');
                     } finally {
                       setIsUpdatingPhone(false);
                     }
