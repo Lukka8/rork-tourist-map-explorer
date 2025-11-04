@@ -70,7 +70,7 @@
           "photosPermission": "The app accesses your photos to let you share them with your friends."
         }
       ],
-            [
+      [
         "react-native-google-mobile-ads",
         {
           "androidAppId": "ca-app-pub-3940256099942544/6300978111",
