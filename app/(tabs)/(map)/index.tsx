@@ -14,7 +14,7 @@ import {
 import * as Location from 'expo-location';
 import { Image } from 'expo-image';
 import { MapPin, X, Navigation, Layers, Heart, Search, Filter, Star, CheckCircle2 } from 'lucide-react-native';
-import { NYC_ATTRACTIONS, Attraction } from '@/constants/attractions';
+import { NYC_ATTRACTIONS, TBILISI_ATTRACTIONS, Attraction } from '@/constants/attractions';
 import { StatusBar } from 'expo-status-bar';
 import { MapView, Marker, Polyline, UserLocationMarker, type Region as MapRegion, type MapRef } from '@/components/MapComponents';
 import { useAuth } from '@/lib/auth-context';
@@ -72,7 +72,9 @@ export default function MapScreen() {
     );
   };
 
-  const filteredAttractions = NYC_ATTRACTIONS.filter(attraction => {
+  const allAttractions = [...NYC_ATTRACTIONS, ...TBILISI_ATTRACTIONS];
+
+  const filteredAttractions = allAttractions.filter(attraction => {
     const matchesSearch = attraction.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          attraction.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || attraction.category === selectedCategory;
@@ -344,7 +346,7 @@ export default function MapScreen() {
             </View>
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
-            <Text style={[styles.headerTitle, { color: colors.primary }]}>Explore NYC</Text>
+            <Text style={[styles.headerTitle, { color: colors.primary }]}>Explore</Text>
             <Text style={[styles.headerSubtitle, { color: colors.secondaryText }]}>
               {filteredAttractions.length} {filteredAttractions.length === 1 ? 'attraction' : 'attractions'} found
             </Text>
