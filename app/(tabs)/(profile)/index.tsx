@@ -23,8 +23,6 @@ import {
   Sun,
   Monitor,
 } from 'lucide-react-native';
-import { AdBanner } from '@/components/AdBanner';
-import { AdInterstitial } from '@/components/AdInterstitial';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'expo-router';
 import { NYC_ATTRACTIONS } from '@/constants/attractions';
@@ -40,8 +38,6 @@ export default function ProfileScreen() {
   const { themeMode, setTheme } = useTheme();
   const colors = useThemeColors();
   const [showThemeMenu, setShowThemeMenu] = useState(false);
-  const [showInterstitialAd, setShowInterstitialAd] = useState(false);
-  const [attractionClickCount, setAttractionClickCount] = useState(0);
 
   const handleLogout = async () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -66,16 +62,7 @@ export default function ProfileScreen() {
   };
 
   const viewAttractionDetails = (id: string) => {
-    setAttractionClickCount(prev => prev + 1);
-    
-    if ((attractionClickCount + 1) % 4 === 0) {
-      setShowInterstitialAd(true);
-      setTimeout(() => {
-        router.push(`/${id}` as any);
-      }, 5000);
-    } else {
-      router.push(`/${id}` as any);
-    }
+    router.push(`/${id}` as any);
   };
 
   if (isAuthLoading || !user) {
@@ -232,10 +219,6 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.adContainer}>
-        <AdBanner size="banner" />
-      </View>
-
       <ScrollView style={styles.listContainer} showsVerticalScrollIndicator={false}>
         {displayAttractions.length === 0 ? (
           <View style={styles.emptyState}>
@@ -314,11 +297,6 @@ export default function ProfileScreen() {
           })
         )}
       </ScrollView>
-
-      <AdInterstitial
-        visible={showInterstitialAd}
-        onClose={() => setShowInterstitialAd(false)}
-      />
     </View>
   );
 }
