@@ -52,6 +52,8 @@ export default function MapScreen() {
   
   console.log('[MapScreen] Render - isAuthenticated:', isAuthenticated, 'isAuthLoading:', isAuthLoading);
   const [userLocation, setUserLocation] = useState<LocationCoords | null>(null);
+  const [userHeading, setUserHeading] = useState<number | undefined>(undefined);
+  const [currentZoom, setCurrentZoom] = useState<number>(0.15);
   const [selectedAttraction, setSelectedAttraction] = useState<Attraction | null>(null);
   const [showDirections, setShowDirections] = useState(false);
   const [mapType, setMapType] = useState<'standard' | 'satellite' | 'hybrid'>('standard');
@@ -92,10 +94,18 @@ export default function MapScreen() {
 
   const allAttractions = [...NYC_ATTRACTIONS, ...TBILISI_ATTRACTIONS];
 
+  const ZOOM_THRESHOLD = 0.5;
+  const shouldShowAttractions = currentZoom < ZOOM_THRESHOLD;
+
   const filteredAttractions = allAttractions.filter(attraction => {
     const matchesSearch = attraction.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          attraction.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || attraction.category === selectedCategory;
+    
+    if (!shouldShowAttractions && !searchQuery) {
+      return false;
+    }
+    
     return matchesSearch && matchesCategory;
   }).sort((a, b) => {
     const distA = getAttractionDistance(a) || Infinity;
@@ -149,8 +159,15 @@ export default function MapScreen() {
               latitude: location.coords.latitude,
               longitude: location.coords.longitude,
             });
+            if (location.coords.heading !== null && location.coords.heading !== undefined) {
+              setUserHeading(location.coords.heading);
+            }
           }
         );
+
+        Location.watchHeadingAsync((headingData) => {
+          setUserHeading(headingData.trueHeading);
+        });
       }
     } catch (error) {
       console.error('[MapScreen] Error requesting location permission:', error);
@@ -373,6 +390,10 @@ export default function MapScreen() {
         longitudeDelta: 50,
       };
 
+  const handleRegionChange = (region: MapRegion) => {
+    setCurrentZoom(region.latitudeDelta);
+  };
+
   const renderMap = () => {
     return (
       <MapView
@@ -385,8 +406,9 @@ export default function MapScreen() {
         showsCompass={true}
         showsTraffic={showTraffic}
         provider={undefined}
+        onRegionChangeComplete={handleRegionChange}
       >
-        {userLocation && <UserLocationMarker coordinate={userLocation} />}
+        {userLocation && <UserLocationMarker coordinate={userLocation} heading={userHeading} />}
         
         {filteredAttractions.map((attraction) => (
           <Marker
@@ -453,6 +475,12 @@ export default function MapScreen() {
             <Layers size={24} color={colors.primary} />
           </TouchableOpacity>
         </View>
+
+      {!shouldShowAttractions && !searchQuery && (
+        <View style={[styles.zoomHintContainer, { backgroundColor: colors.card, shadowColor: colors.text }]}>
+          <Text style={[styles.zoomHintText, { color: colors.text }]}>🔍 Zoom in to see attractions</Text>
+        </View>
+      )}
 
       <View style={[styles.headerContainer, { backgroundColor: colors.headerBackground, shadowColor: colors.text }]}>
         <View style={styles.header}>
@@ -656,7 +684,7 @@ export default function MapScreen() {
               showsUserLocation={true}
               showsTraffic={showTraffic}
             >
-              {userLocation && <UserLocationMarker coordinate={userLocation} />}
+              {userLocation && <UserLocationMarker coordinate={userLocation} heading={userHeading} />}
               
               <Marker
                 coordinate={selectedAttraction.coordinate}
@@ -1264,5 +1292,23 @@ const styles = StyleSheet.create({
   actionButtonTextActive: {
     color: '#FFF',
   },
-
+  zoomHintContainer: {
+    position: 'absolute',
+    top: 200,
+    left: 20,
+    right: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  zoomHintText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+  },
 });

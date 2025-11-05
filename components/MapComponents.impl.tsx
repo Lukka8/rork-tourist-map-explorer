@@ -15,12 +15,13 @@ interface MapViewProps {
   showsTraffic?: boolean;
   provider?: any;
   onLoad?: () => void;
+  onRegionChangeComplete?: (region: Region) => void;
 }
 
 
 
 export const MapView = forwardRef<MapRef, MapViewProps>(
-  ({ children, style, initialRegion, mapType = 'standard', showsTraffic = false, onLoad }, ref) => {
+  ({ children, style, initialRegion, mapType = 'standard', showsTraffic = false, onLoad, onRegionChangeComplete }, ref) => {
     const mapRef = useRef<any>(null);
     const [mapLoaded, setMapLoaded] = useState(false);
     const [mapError, setMapError] = useState<string | null>(null);
@@ -92,6 +93,18 @@ export const MapView = forwardRef<MapRef, MapViewProps>(
           mapStyle={mapStyle}
           onLoad={() => setMapLoaded(true)}
           onError={handleMapError}
+          onMoveEnd={(evt) => {
+            if (onRegionChangeComplete) {
+              const { longitude, latitude, zoom } = evt.viewState;
+              const latitudeDelta = calculateLatitudeDelta(zoom);
+              onRegionChangeComplete({
+                latitude,
+                longitude,
+                latitudeDelta,
+                longitudeDelta: latitudeDelta,
+              });
+            }
+          }}
         >
           <NavigationControl position="top-right" />
           {children}
@@ -163,28 +176,68 @@ export const Polyline = ({ coordinates, strokeColor = '#007AFF', strokeWidth = 4
 
 interface UserLocationMarkerProps {
   coordinate: { latitude: number; longitude: number };
+  heading?: number;
 }
 
-export const UserLocationMarker = ({ coordinate }: UserLocationMarkerProps) => (
+export const UserLocationMarker = ({ coordinate, heading }: UserLocationMarkerProps) => (
   <MapGLMarker
     longitude={coordinate.longitude}
     latitude={coordinate.latitude}
     anchor="center"
+    rotation={heading}
   >
     <div style={{
-      width: 16,
-      height: 16,
-      borderRadius: '50%',
-      backgroundColor: '#007AFF',
-      border: '3px solid white',
-      boxShadow: '0 0 0 8px rgba(0, 122, 255, 0.3)'
-    }} />
+      position: 'relative',
+      width: 50,
+      height: 50,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+      <div style={{
+        position: 'absolute',
+        width: 32,
+        height: 32,
+        borderRadius: '50%',
+        backgroundColor: '#007AFF',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+        zIndex: 2,
+      }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+          <polyline points="18 15 12 9 6 15"></polyline>
+        </svg>
+      </div>
+      <div style={{
+        position: 'absolute',
+        width: 24,
+        height: 24,
+        borderRadius: '50%',
+        backgroundColor: 'rgba(0, 122, 255, 0.2)',
+        zIndex: 0,
+      }} />
+      <div style={{
+        position: 'absolute',
+        width: 12,
+        height: 12,
+        borderRadius: '50%',
+        backgroundColor: '#007AFF',
+        border: '2px solid white',
+        zIndex: 1,
+      }} />
+    </div>
   </MapGLMarker>
 );
 
 function calculateWebZoom(latitudeDelta: number) {
   const value = Math.log2(360 / Math.max(latitudeDelta, 0.00001));
   return Math.max(1, Math.min(18, Math.round(value)));
+}
+
+function calculateLatitudeDelta(zoom: number) {
+  return 360 / Math.pow(2, zoom);
 }
 
 const styles = StyleSheet.create({
