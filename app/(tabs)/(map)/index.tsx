@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import { Image } from 'expo-image';
-import { MapPin, X, Navigation, Layers, Heart, Search, Filter, Star, CheckCircle2, ArrowLeft, Clock, TrendingUp, Car, Bus, Bike, Footprints } from 'lucide-react-native';
+import { MapPin, X, Navigation, Layers, Heart, Search, Filter, Star, CheckCircle2, ArrowLeft, Clock, TrendingUp, Car, Bus, Bike, Footprints, Radio } from 'lucide-react-native';
 import { NYC_ATTRACTIONS, TBILISI_ATTRACTIONS, Attraction } from '@/constants/attractions';
 import { StatusBar } from 'expo-status-bar';
 import { MapView, Marker, Polyline, UserLocationMarker, type Region as MapRegion, type MapRef } from '@/components/MapComponents';
@@ -64,6 +64,7 @@ export default function MapScreen() {
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
   const [showFullScreenMap, setShowFullScreenMap] = useState(false);
   const [transportMode, setTransportMode] = useState<'driving' | 'bus' | 'cycling' | 'walking'>('driving');
+  const [showTraffic, setShowTraffic] = useState(true);
 
   const attractions = useAttractions();
   const { isFavorite, isVisited, addFavorite: addFav, removeFavorite: removeFav, addVisited: addVis } = attractions;
@@ -382,6 +383,7 @@ export default function MapScreen() {
         showsUserLocation={true}
         showsMyLocationButton={false}
         showsCompass={true}
+        showsTraffic={showTraffic}
         provider={undefined}
       >
         {userLocation && <UserLocationMarker coordinate={userLocation} />}
@@ -432,6 +434,17 @@ export default function MapScreen() {
       {renderMap()}
 
       <View style={styles.controlsContainer}>
+          <TouchableOpacity 
+            style={[
+              styles.controlButton, 
+              { backgroundColor: colors.card, shadowColor: colors.text },
+              showTraffic && styles.controlButtonActive
+            ]} 
+            onPress={() => setShowTraffic(!showTraffic)}
+          >
+            <Radio size={24} color={showTraffic ? '#FFF' : colors.primary} />
+          </TouchableOpacity>
+
           <TouchableOpacity style={[styles.controlButton, { backgroundColor: colors.card, shadowColor: colors.text }]} onPress={centerOnUser}>
             <Navigation size={24} color={colors.primary} />
           </TouchableOpacity>
@@ -641,6 +654,7 @@ export default function MapScreen() {
               initialRegion={initialRegion}
               mapType={mapType}
               showsUserLocation={true}
+              showsTraffic={showTraffic}
             >
               {userLocation && <UserLocationMarker coordinate={userLocation} />}
               
@@ -902,6 +916,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 5,
+  },
+  controlButtonActive: {
+    backgroundColor: '#007AFF',
   },
   markerContainer: {
     padding: 4,

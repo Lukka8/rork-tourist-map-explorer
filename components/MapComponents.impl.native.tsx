@@ -11,12 +11,13 @@ interface MapViewProps {
   showsUserLocation?: boolean;
   showsMyLocationButton?: boolean;
   showsCompass?: boolean;
+  showsTraffic?: boolean;
   provider?: any;
   onLoad?: () => void;
 }
 
 export const MapView = forwardRef<MapRef, MapViewProps>(
-  ({ children, style, initialRegion, mapType = 'standard', onLoad }, ref) => {
+  ({ children, style, initialRegion, mapType = 'standard', showsTraffic = false, onLoad }, ref) => {
     const mapRef = useRef<RNMapView | null>(null);
     const [isMapReady, setIsMapReady] = useState(false);
 
@@ -48,6 +49,7 @@ export const MapView = forwardRef<MapRef, MapViewProps>(
           mapType={mapType}
           showsUserLocation
           showsCompass
+          showsTraffic={showsTraffic}
           onMapReady={handleMapReady}
         >
           {children}

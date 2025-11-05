@@ -12,6 +12,7 @@ interface MapViewProps {
   showsUserLocation?: boolean;
   showsMyLocationButton?: boolean;
   showsCompass?: boolean;
+  showsTraffic?: boolean;
   provider?: any;
   onLoad?: () => void;
 }
@@ -19,7 +20,7 @@ interface MapViewProps {
 
 
 export const MapView = forwardRef<MapRef, MapViewProps>(
-  ({ children, style, initialRegion, mapType = 'standard', onLoad }, ref) => {
+  ({ children, style, initialRegion, mapType = 'standard', showsTraffic = false, onLoad }, ref) => {
     const mapRef = useRef<any>(null);
     const [mapLoaded, setMapLoaded] = useState(false);
     const [mapError, setMapError] = useState<string | null>(null);
