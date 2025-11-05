@@ -10,10 +10,11 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
+  Modal,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { Image } from 'expo-image';
-import { MapPin, X, Navigation, Layers, Heart, Search, Filter, Star, CheckCircle2 } from 'lucide-react-native';
+import { MapPin, X, Navigation, Layers, Heart, Search, Filter, Star, CheckCircle2, ArrowLeft, Clock, TrendingUp } from 'lucide-react-native';
 import { NYC_ATTRACTIONS, TBILISI_ATTRACTIONS, Attraction } from '@/constants/attractions';
 import { StatusBar } from 'expo-status-bar';
 import { MapView, Marker, Polyline, UserLocationMarker, type Region as MapRegion, type MapRef } from '@/components/MapComponents';
@@ -27,6 +28,19 @@ const { height } = Dimensions.get('window');
 interface LocationCoords {
   latitude: number;
   longitude: number;
+}
+
+interface RouteStep {
+  instruction: string;
+  distance: number;
+  duration: number;
+}
+
+interface RouteData {
+  coordinates: LocationCoords[];
+  distance: number;
+  duration: number;
+  steps: RouteStep[];
 }
 
 
@@ -46,6 +60,9 @@ export default function MapScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [routeData, setRouteData] = useState<RouteData | null>(null);
+  const [isLoadingRoute, setIsLoadingRoute] = useState(false);
+  const [showFullScreenMap, setShowFullScreenMap] = useState(false);
 
   const attractions = useAttractions();
   const { isFavorite, isVisited, addFavorite: addFav, removeFavorite: removeFav, addVisited: addVis } = attractions;
@@ -172,10 +189,76 @@ export default function MapScreen() {
     });
   };
 
-  const handleGetDirections = () => {
-    setShowDirections(true);
+  const fetchRouteData = async (start: LocationCoords, end: LocationCoords): Promise<RouteData | null> => {
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson&steps=true`;
+      
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+        return null;
+      }
+      
+      const route = data.routes[0];
+      const coordinates = route.geometry.coordinates.map((coord: number[]) => ({
+        latitude: coord[1],
+        longitude: coord[0],
+      }));
+      
+      const steps: RouteStep[] = route.legs[0]?.steps?.map((step: any) => ({
+        instruction: step.maneuver?.instruction || 'Continue',
+        distance: step.distance,
+        duration: step.duration,
+      })) || [];
+      
+      return {
+        coordinates,
+        distance: route.distance / 1000,
+        duration: route.duration / 60,
+        steps,
+      };
+    } catch (error) {
+      console.error('Error fetching route:', error);
+      return null;
+    }
+  };
+
+  const handleGetDirections = async () => {
+    if (!userLocation || !selectedAttraction) return;
     
-    if (userLocation && selectedAttraction) {
+    setIsLoadingRoute(true);
+    setShowDirections(true);
+    setShowFullScreenMap(true);
+    
+    const route = await fetchRouteData(userLocation, selectedAttraction.coordinate);
+    
+    if (route) {
+      setRouteData(route);
+      
+      const allCoords = [userLocation, ...route.coordinates, selectedAttraction.coordinate];
+      const lats = allCoords.map(c => c.latitude);
+      const lngs = allCoords.map(c => c.longitude);
+      
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+      const minLng = Math.min(...lngs);
+      const maxLng = Math.max(...lngs);
+      
+      const midLat = (minLat + maxLat) / 2;
+      const midLng = (minLng + maxLng) / 2;
+      const latDelta = (maxLat - minLat) * 1.8;
+      const lngDelta = (maxLng - minLng) * 1.8;
+
+      setTimeout(() => {
+        mapRef.current?.animateToRegion({
+          latitude: midLat,
+          longitude: midLng,
+          latitudeDelta: Math.max(latDelta, 0.02),
+          longitudeDelta: Math.max(lngDelta, 0.02),
+        }, 1000);
+      }, 100);
+    } else {
       const minLat = Math.min(userLocation.latitude, selectedAttraction.coordinate.latitude);
       const maxLat = Math.max(userLocation.latitude, selectedAttraction.coordinate.latitude);
       const minLng = Math.min(userLocation.longitude, selectedAttraction.coordinate.longitude);
@@ -183,16 +266,26 @@ export default function MapScreen() {
       
       const midLat = (minLat + maxLat) / 2;
       const midLng = (minLng + maxLng) / 2;
-      const latDelta = (maxLat - minLat) * 1.5;
-      const lngDelta = (maxLng - minLng) * 1.5;
+      const latDelta = (maxLat - minLat) * 1.8;
+      const lngDelta = (maxLng - minLng) * 1.8;
 
-      mapRef.current?.animateToRegion({
-        latitude: midLat,
-        longitude: midLng,
-        latitudeDelta: Math.max(latDelta, 0.02),
-        longitudeDelta: Math.max(lngDelta, 0.02),
-      }, 1000);
+      setTimeout(() => {
+        mapRef.current?.animateToRegion({
+          latitude: midLat,
+          longitude: midLng,
+          latitudeDelta: Math.max(latDelta, 0.02),
+          longitudeDelta: Math.max(lngDelta, 0.02),
+        }, 1000);
+      }, 100);
     }
+    
+    setIsLoadingRoute(false);
+  };
+
+  const closeFullScreenMap = () => {
+    setShowFullScreenMap(false);
+    setShowDirections(false);
+    setRouteData(null);
   };
 
   const centerOnUser = () => {
@@ -303,12 +396,20 @@ export default function MapScreen() {
           </Marker>
         ))}
 
-        {showDirections && userLocation && selectedAttraction && (
+        {showDirections && userLocation && selectedAttraction && routeData && (
+          <Polyline
+            coordinates={routeData.coordinates}
+            strokeColor="#007AFF"
+            strokeWidth={5}
+          />
+        )}
+
+        {showDirections && userLocation && selectedAttraction && !routeData && (
           <Polyline
             coordinates={[userLocation, selectedAttraction.coordinate]}
             strokeColor="#007AFF"
             strokeWidth={4}
-            lineDashPattern={[1]}
+            lineDashPattern={[5, 5]}
           />
         )}
       </MapView>
@@ -400,7 +501,7 @@ export default function MapScreen() {
         )}
       </View>
 
-      {selectedAttraction && (
+      {selectedAttraction && !showFullScreenMap && (
         <Animated.View
           style={[
             styles.cardContainer,
@@ -490,12 +591,17 @@ export default function MapScreen() {
               </View>
 
               <TouchableOpacity
-                style={styles.directionsButton}
+                style={[styles.directionsButton, isLoadingRoute && styles.directionsButtonLoading]}
                 onPress={handleGetDirections}
+                disabled={isLoadingRoute}
               >
-                <Navigation size={20} color="#FFF" />
+                {isLoadingRoute ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <Navigation size={20} color="#FFF" />
+                )}
                 <Text style={styles.directionsButtonText}>
-                  {showDirections ? 'Showing Route' : 'Get Directions'}
+                  {isLoadingRoute ? 'Loading Route...' : showDirections ? 'View Route' : 'Get Directions'}
                 </Text>
               </TouchableOpacity>
 
@@ -511,6 +617,126 @@ export default function MapScreen() {
             </ScrollView>
           </View>
         </Animated.View>
+      )}
+
+      {showFullScreenMap && selectedAttraction && (
+        <Modal
+          visible={showFullScreenMap}
+          animationType="slide"
+          onRequestClose={closeFullScreenMap}
+        >
+          <View style={styles.fullScreenContainer}>
+            <MapView
+              ref={mapRef}
+              style={styles.fullScreenMap}
+              initialRegion={initialRegion}
+              mapType={mapType}
+              showsUserLocation={true}
+            >
+              {userLocation && <UserLocationMarker coordinate={userLocation} />}
+              
+              <Marker
+                coordinate={selectedAttraction.coordinate}
+              >
+                <View style={[styles.markerContainer, styles.markerSelected]}>
+                  <MapPin
+                    size={32}
+                    color="#FF6B6B"
+                    fill="#FF6B6B"
+                  />
+                </View>
+              </Marker>
+
+              {routeData && (
+                <Polyline
+                  coordinates={routeData.coordinates}
+                  strokeColor="#007AFF"
+                  strokeWidth={6}
+                />
+              )}
+
+              {!routeData && userLocation && (
+                <Polyline
+                  coordinates={[userLocation, selectedAttraction.coordinate]}
+                  strokeColor="#007AFF"
+                  strokeWidth={5}
+                  lineDashPattern={[5, 5]}
+                />
+              )}
+            </MapView>
+
+            <View style={[styles.fullScreenHeader, { backgroundColor: colors.card, shadowColor: colors.text }]}>
+              <TouchableOpacity
+                style={[styles.backButton, { backgroundColor: colors.card }]}
+                onPress={closeFullScreenMap}
+              >
+                <ArrowLeft size={24} color={colors.text} />
+              </TouchableOpacity>
+              
+              <View style={styles.routeInfo}>
+                <Text style={[styles.routeTitle, { color: colors.text }]} numberOfLines={1}>
+                  {selectedAttraction.name}
+                </Text>
+                {routeData && (
+                  <View style={styles.routeStats}>
+                    <View style={styles.routeStat}>
+                      <TrendingUp size={14} color={colors.primary} />
+                      <Text style={[styles.routeStatText, { color: colors.text }]}>
+                        {routeData.distance.toFixed(1)} km
+                      </Text>
+                    </View>
+                    <View style={styles.routeStat}>
+                      <Clock size={14} color={colors.primary} />
+                      <Text style={[styles.routeStatText, { color: colors.text }]}>
+                        {Math.round(routeData.duration)} min
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              <TouchableOpacity
+                style={[styles.mapTypeButton, { backgroundColor: colors.searchBackground }]}
+                onPress={toggleMapType}
+              >
+                <Layers size={20} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+
+            {routeData && routeData.steps.length > 0 && (
+              <View style={[styles.directionsPanel, { backgroundColor: colors.card }]}>
+                <Text style={[styles.directionsPanelTitle, { color: colors.text }]}>Directions</Text>
+                <ScrollView 
+                  style={styles.directionsList}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {routeData.steps.map((step, index) => (
+                    <View key={index} style={[styles.directionStep, { borderBottomColor: colors.border }]}>
+                      <View style={[styles.stepNumber, { backgroundColor: colors.primary }]}>
+                        <Text style={styles.stepNumberText}>{index + 1}</Text>
+                      </View>
+                      <View style={styles.stepContent}>
+                        <Text style={[styles.stepInstruction, { color: colors.text }]}>
+                          {step.instruction}
+                        </Text>
+                        <View style={styles.stepMeta}>
+                          {step.distance > 0 && (
+                            <Text style={[styles.stepDistance, { color: colors.secondaryText }]}>
+                              {step.distance >= 1000 
+                                ? `${(step.distance / 1000).toFixed(1)} km`
+                                : `${Math.round(step.distance)} m`
+                              }
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </View>
+        </Modal>
       )}
     </View>
   );
@@ -750,10 +976,128 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
+  directionsButtonLoading: {
+    opacity: 0.7,
+  },
   directionsButtonText: {
     color: '#FFF',
     fontSize: 17,
     fontWeight: '700' as const,
+  },
+  fullScreenContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  fullScreenMap: {
+    flex: 1,
+  },
+  fullScreenHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    gap: 12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  routeInfo: {
+    flex: 1,
+  },
+  routeTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    marginBottom: 4,
+  },
+  routeStats: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  routeStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  routeStatText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+  },
+  mapTypeButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  directionsPanel: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    maxHeight: height * 0.4,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  directionsPanelTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    marginBottom: 16,
+  },
+  directionsList: {
+    maxHeight: height * 0.3,
+  },
+  directionStep: {
+    flexDirection: 'row',
+    paddingVertical: 16,
+    gap: 12,
+    borderBottomWidth: 1,
+  },
+  stepNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepNumberText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700' as const,
+  },
+  stepContent: {
+    flex: 1,
+  },
+  stepInstruction: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    marginBottom: 4,
+    lineHeight: 20,
+  },
+  stepMeta: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  stepDistance: {
+    fontSize: 13,
   },
   detailsButton: {
     flexDirection: 'row',
