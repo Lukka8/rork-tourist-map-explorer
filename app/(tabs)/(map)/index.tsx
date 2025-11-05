@@ -193,7 +193,23 @@ export default function MapScreen() {
 
   const fetchRouteData = async (start: LocationCoords, end: LocationCoords, mode: 'driving' | 'bus' | 'cycling' | 'walking'): Promise<RouteData | null> => {
     try {
-      const osrmMode = mode === 'bus' ? 'driving' : mode === 'cycling' ? 'cycling' : mode === 'walking' ? 'foot' : 'driving';
+      let osrmMode: string;
+      let multiplier = 1;
+      
+      if (mode === 'driving') {
+        osrmMode = 'driving';
+        multiplier = 1;
+      } else if (mode === 'bus') {
+        osrmMode = 'driving';
+        multiplier = 1.5;
+      } else if (mode === 'cycling') {
+        osrmMode = 'cycling';
+        multiplier = 1;
+      } else {
+        osrmMode = 'foot';
+        multiplier = 1;
+      }
+      
       const url = `https://router.project-osrm.org/route/v1/${osrmMode}/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson&steps=true`;
       
       const response = await fetch(url);
@@ -212,13 +228,13 @@ export default function MapScreen() {
       const steps: RouteStep[] = route.legs[0]?.steps?.map((step: any) => ({
         instruction: step.maneuver?.instruction || 'Continue',
         distance: step.distance,
-        duration: step.duration,
+        duration: step.duration * multiplier,
       })) || [];
       
       return {
         coordinates,
         distance: route.distance / 1000,
-        duration: route.duration / 60,
+        duration: (route.duration / 60) * multiplier,
         steps,
       };
     } catch (error) {
@@ -367,10 +383,10 @@ export default function MapScreen() {
         longitudeDelta: 0.15,
       }
     : {
-        latitude: 40.7589,
-        longitude: -73.9851,
-        latitudeDelta: 0.15,
-        longitudeDelta: 0.15,
+        latitude: 41.7151,
+        longitude: -74.0060,
+        latitudeDelta: 50,
+        longitudeDelta: 50,
       };
 
   const renderMap = () => {
