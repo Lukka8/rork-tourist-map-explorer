@@ -193,33 +193,35 @@ export default function MapScreen() {
 
   const fetchRouteData = async (start: LocationCoords, end: LocationCoords, mode: 'driving' | 'bus' | 'cycling' | 'walking'): Promise<RouteData | null> => {
     try {
-      let osrmMode: string;
-      let timeMultiplier = 1;
-      let distanceMultiplier = 1;
+      let osrmProfile: string;
+      let speedMultiplier = 1;
+      let routeMultiplier = 1;
       
       if (mode === 'driving') {
-        osrmMode = 'driving';
-        timeMultiplier = 1;
-        distanceMultiplier = 1;
+        osrmProfile = 'car';
+        speedMultiplier = 1;
+        routeMultiplier = 1;
       } else if (mode === 'bus') {
-        osrmMode = 'driving';
-        timeMultiplier = 2.2;
-        distanceMultiplier = 1.15;
+        osrmProfile = 'car';
+        speedMultiplier = 0.45;
+        routeMultiplier = 1.2;
       } else if (mode === 'cycling') {
-        osrmMode = 'bike';
-        timeMultiplier = 1;
-        distanceMultiplier = 1;
+        osrmProfile = 'bike';
+        speedMultiplier = 1;
+        routeMultiplier = 1.05;
       } else {
-        osrmMode = 'foot';
-        timeMultiplier = 1;
-        distanceMultiplier = 1;
+        osrmProfile = 'foot';
+        speedMultiplier = 1;
+        routeMultiplier = 1.1;
       }
       
-      const url = `https://router.project-osrm.org/route/v1/${osrmMode}/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson&steps=true`;
+      const url = `https://router.project-osrm.org/route/v1/${osrmProfile}/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson&steps=true`;
       
-      console.log(`[Route] Fetching ${mode} route with OSRM profile: ${osrmMode}`);
+      console.log(`[Route] Fetching ${mode} route:`, url);
       const response = await fetch(url);
       const data = await response.json();
+      
+      console.log(`[Route] Response for ${mode}:`, JSON.stringify(data, null, 2));
       
       if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
         console.error(`[Route] Failed to fetch route for ${mode}:`, data);
@@ -233,15 +235,18 @@ export default function MapScreen() {
       }));
       
       const steps: RouteStep[] = route.legs[0]?.steps?.map((step: any) => ({
-        instruction: step.maneuver?.instruction || 'Continue',
-        distance: step.distance * distanceMultiplier,
-        duration: step.duration * timeMultiplier,
+        instruction: step.maneuver?.instruction || step.name || 'Continue',
+        distance: step.distance * routeMultiplier,
+        duration: (step.duration / speedMultiplier),
       })) || [];
       
-      const totalDistance = (route.distance / 1000) * distanceMultiplier;
-      const totalDuration = (route.duration / 60) * timeMultiplier;
+      const baseDistance = route.distance / 1000;
+      const baseDuration = route.duration / 60;
       
-      console.log(`[Route] ${mode}: ${totalDistance.toFixed(1)}km, ${Math.round(totalDuration)} min`);
+      const totalDistance = baseDistance * routeMultiplier;
+      const totalDuration = baseDuration / speedMultiplier;
+      
+      console.log(`[Route] ${mode} (profile: ${osrmProfile}): Distance=${totalDistance.toFixed(2)}km (base: ${baseDistance.toFixed(2)}km), Duration=${Math.round(totalDuration)}min (base: ${Math.round(baseDuration)}min), Speed mult: ${speedMultiplier}, Route mult: ${routeMultiplier}`);
       
       return {
         coordinates,
