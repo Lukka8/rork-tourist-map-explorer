@@ -194,28 +194,35 @@ export default function MapScreen() {
   const fetchRouteData = async (start: LocationCoords, end: LocationCoords, mode: 'driving' | 'bus' | 'cycling' | 'walking'): Promise<RouteData | null> => {
     try {
       let osrmMode: string;
-      let multiplier = 1;
+      let timeMultiplier = 1;
+      let distanceMultiplier = 1;
       
       if (mode === 'driving') {
         osrmMode = 'driving';
-        multiplier = 1;
+        timeMultiplier = 1;
+        distanceMultiplier = 1;
       } else if (mode === 'bus') {
         osrmMode = 'driving';
-        multiplier = 1.5;
+        timeMultiplier = 2.2;
+        distanceMultiplier = 1.15;
       } else if (mode === 'cycling') {
-        osrmMode = 'cycling';
-        multiplier = 1;
+        osrmMode = 'bike';
+        timeMultiplier = 1;
+        distanceMultiplier = 1;
       } else {
         osrmMode = 'foot';
-        multiplier = 1;
+        timeMultiplier = 1;
+        distanceMultiplier = 1;
       }
       
       const url = `https://router.project-osrm.org/route/v1/${osrmMode}/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson&steps=true`;
       
+      console.log(`[Route] Fetching ${mode} route with OSRM profile: ${osrmMode}`);
       const response = await fetch(url);
       const data = await response.json();
       
       if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+        console.error(`[Route] Failed to fetch route for ${mode}:`, data);
         return null;
       }
       
@@ -227,18 +234,23 @@ export default function MapScreen() {
       
       const steps: RouteStep[] = route.legs[0]?.steps?.map((step: any) => ({
         instruction: step.maneuver?.instruction || 'Continue',
-        distance: step.distance,
-        duration: step.duration * multiplier,
+        distance: step.distance * distanceMultiplier,
+        duration: step.duration * timeMultiplier,
       })) || [];
+      
+      const totalDistance = (route.distance / 1000) * distanceMultiplier;
+      const totalDuration = (route.duration / 60) * timeMultiplier;
+      
+      console.log(`[Route] ${mode}: ${totalDistance.toFixed(1)}km, ${Math.round(totalDuration)} min`);
       
       return {
         coordinates,
-        distance: route.distance / 1000,
-        duration: (route.duration / 60) * multiplier,
+        distance: totalDistance,
+        duration: totalDuration,
         steps,
       };
     } catch (error) {
-      console.error('Error fetching route:', error);
+      console.error('[Route] Error fetching route:', error);
       return null;
     }
   };
