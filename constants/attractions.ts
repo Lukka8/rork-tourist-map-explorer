@@ -97,3 +97,90 @@ export const NYC_ATTRACTIONS: Attraction[] = [
     category: 'landmark',
   },
 ];
+
+export const TBILISI_ATTRACTIONS: Attraction[] = [
+  {
+    id: 'tbilisi-1',
+    name: 'Narikala Fortress',
+    coordinate: {
+      latitude: 41.6888,
+      longitude: 44.8090,
+    },
+    fact: 'Built in the 4th century, predating the founding of Tbilisi',
+    description: 'This ancient fortress overlooks the Old Town and the Mtkvari River. The fortress was built by the Persians and has been destroyed and rebuilt multiple times throughout history. A cable car provides stunning views of the city.',
+    imageUrl: 'https://images.unsplash.com/photo-1586724237569-f3d0c1dee8c6?w=800',
+    category: 'landmark',
+  },
+  {
+    id: 'tbilisi-2',
+    name: 'Old Town (Dzveli Tbilisi)',
+    coordinate: {
+      latitude: 41.6919,
+      longitude: 44.8076,
+    },
+    fact: 'Home to sulfur bathhouses that gave the city its name',
+    description: 'The historic heart of Tbilisi features narrow winding streets, traditional balconied houses, and famous sulfur baths. "Tbilisi" means "warm location" referring to the area\'s natural hot springs.',
+    imageUrl: 'https://images.unsplash.com/photo-1552165867-a56e13be7c5e?w=800',
+    category: 'cultural',
+  },
+  {
+    id: 'tbilisi-3',
+    name: 'Holy Trinity Cathedral',
+    coordinate: {
+      latitude: 41.6975,
+      longitude: 44.8172,
+    },
+    fact: 'One of the tallest Orthodox cathedrals in the world',
+    description: 'Completed in 2004, Sameba Cathedral stands 84 meters tall and can accommodate 15,000 worshippers. It combines traditional Georgian architecture with Byzantine styles and features stunning gold-domed towers.',
+    imageUrl: 'https://images.unsplash.com/photo-1565022536102-236e2bc58a5d?w=800',
+    category: 'cultural',
+  },
+  {
+    id: 'tbilisi-4',
+    name: 'Bridge of Peace',
+    coordinate: {
+      latitude: 41.6929,
+      longitude: 44.8084,
+    },
+    fact: 'A bow-shaped pedestrian bridge with 30,000 LED lights',
+    description: 'This modern glass and steel bridge opened in 2010, designed by Italian architect Michele De Lucchi. At night, it displays a light show using LED bulbs that communicate in Morse code about elements of the periodic table.',
+    imageUrl: 'https://images.unsplash.com/photo-1598125760172-c5095134f1db?w=800',
+    category: 'landmark',
+  },
+  {
+    id: 'tbilisi-5',
+    name: 'Georgian National Museum',
+    coordinate: {
+      latitude: 41.6946,
+      longitude: 44.7986,
+    },
+    fact: 'Houses the famous Colchian gold collection from the 3rd millennium BC',
+    description: 'Established in 2004, this museum combines several important collections including archaeological artifacts, ethnographic treasures, and exhibits on Soviet occupation. The gold treasury is world-renowned.',
+    imageUrl: 'https://images.unsplash.com/photo-1611692225801-13e629258147?w=800',
+    category: 'museum',
+  },
+  {
+    id: 'tbilisi-6',
+    name: 'Mtatsminda Park',
+    coordinate: {
+      latitude: 41.6940,
+      longitude: 44.7873,
+    },
+    fact: 'Sits atop Mount Mtatsminda at 770 meters above sea level',
+    description: 'This historic amusement park offers panoramic views of Tbilisi. Accessible by funicular railway built in 1905, it features attractions, restaurants, and observation decks with breathtaking city vistas.',
+    imageUrl: 'https://images.unsplash.com/photo-1558882268-6c2b49f39b8a?w=800',
+    category: 'park',
+  },
+  {
+    id: 'tbilisi-7',
+    name: 'Rustaveli Avenue',
+    coordinate: {
+      latitude: 41.6954,
+      longitude: 44.8007,
+    },
+    fact: 'Tbilisi\'s main thoroughfare named after medieval poet Shota Rustaveli',
+    description: 'This central avenue is lined with museums, theaters, cafes, and historic buildings showcasing various architectural styles. It\'s the cultural heart of the city and hosts major public events.',
+    imageUrl: 'https://images.unsplash.com/photo-1602520034992-57f2d45a0c6f?w=800',
+    category: 'cultural',
+  },
+];
