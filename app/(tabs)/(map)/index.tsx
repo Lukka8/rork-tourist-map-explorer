@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import { Image } from 'expo-image';
-import { MapPin, X, Navigation, Layers, Heart, Search, Filter, Star, CheckCircle2, ArrowLeft, Clock, TrendingUp, Car, Bus, Bike, Footprints, Radio } from 'lucide-react-native';
+import { MapPin, X, Navigation, Layers, Heart, Search, Filter, Star, CheckCircle2, ArrowLeft, Clock, TrendingUp, Radio } from 'lucide-react-native';
 import { NYC_ATTRACTIONS, TBILISI_ATTRACTIONS, Attraction } from '@/constants/attractions';
 import { StatusBar } from 'expo-status-bar';
 import { MapView, Marker, Polyline, UserLocationMarker, type Region as MapRegion, type MapRef } from '@/components/MapComponents';
@@ -63,7 +63,6 @@ export default function MapScreen() {
   const [routeData, setRouteData] = useState<RouteData | null>(null);
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
   const [showFullScreenMap, setShowFullScreenMap] = useState(false);
-  const [transportMode, setTransportMode] = useState<'driving' | 'bus' | 'cycling' | 'walking'>('driving');
   const [showTraffic, setShowTraffic] = useState(true);
 
   const attractions = useAttractions();
@@ -191,40 +190,18 @@ export default function MapScreen() {
     });
   };
 
-  const fetchRouteData = async (start: LocationCoords, end: LocationCoords, mode: 'driving' | 'bus' | 'cycling' | 'walking'): Promise<RouteData | null> => {
+  const fetchRouteData = async (start: LocationCoords, end: LocationCoords): Promise<RouteData | null> => {
     try {
-      let osrmProfile: string;
-      let speedMultiplier = 1;
-      let routeMultiplier = 1;
+      const url = `https://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson&steps=true`;
       
-      if (mode === 'driving') {
-        osrmProfile = 'car';
-        speedMultiplier = 1;
-        routeMultiplier = 1;
-      } else if (mode === 'bus') {
-        osrmProfile = 'car';
-        speedMultiplier = 0.45;
-        routeMultiplier = 1.2;
-      } else if (mode === 'cycling') {
-        osrmProfile = 'bike';
-        speedMultiplier = 1;
-        routeMultiplier = 1.05;
-      } else {
-        osrmProfile = 'foot';
-        speedMultiplier = 1;
-        routeMultiplier = 1.1;
-      }
-      
-      const url = `https://router.project-osrm.org/route/v1/${osrmProfile}/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson&steps=true`;
-      
-      console.log(`[Route] Fetching ${mode} route:`, url);
+      console.log('[Route] Fetching route:', url);
       const response = await fetch(url);
       const data = await response.json();
       
-      console.log(`[Route] Response for ${mode}:`, JSON.stringify(data, null, 2));
+      console.log('[Route] Response:', JSON.stringify(data, null, 2));
       
       if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
-        console.error(`[Route] Failed to fetch route for ${mode}:`, data);
+        console.error('[Route] Failed to fetch route:', data);
         return null;
       }
       
@@ -236,17 +213,14 @@ export default function MapScreen() {
       
       const steps: RouteStep[] = route.legs[0]?.steps?.map((step: any) => ({
         instruction: step.maneuver?.instruction || step.name || 'Continue',
-        distance: step.distance * routeMultiplier,
-        duration: (step.duration / speedMultiplier),
+        distance: step.distance,
+        duration: step.duration,
       })) || [];
       
-      const baseDistance = route.distance / 1000;
-      const baseDuration = route.duration / 60;
+      const totalDistance = route.distance / 1000;
+      const totalDuration = route.duration / 60;
       
-      const totalDistance = baseDistance * routeMultiplier;
-      const totalDuration = baseDuration / speedMultiplier;
-      
-      console.log(`[Route] ${mode} (profile: ${osrmProfile}): Distance=${totalDistance.toFixed(2)}km (base: ${baseDistance.toFixed(2)}km), Duration=${Math.round(totalDuration)}min (base: ${Math.round(baseDuration)}min), Speed mult: ${speedMultiplier}, Route mult: ${routeMultiplier}`);
+      console.log(`[Route] Distance=${totalDistance.toFixed(2)}km, Duration=${Math.round(totalDuration)}min`);
       
       return {
         coordinates,
@@ -260,16 +234,14 @@ export default function MapScreen() {
     }
   };
 
-  const handleGetDirections = async (mode?: 'driving' | 'bus' | 'cycling' | 'walking') => {
+  const handleGetDirections = async () => {
     if (!userLocation || !selectedAttraction) return;
     
-    const selectedMode = mode || transportMode;
-    setTransportMode(selectedMode);
     setIsLoadingRoute(true);
     setShowDirections(true);
     setShowFullScreenMap(true);
     
-    const route = await fetchRouteData(userLocation, selectedAttraction.coordinate, selectedMode);
+    const route = await fetchRouteData(userLocation, selectedAttraction.coordinate);
     
     if (route) {
       setRouteData(route);
@@ -324,11 +296,6 @@ export default function MapScreen() {
     setShowFullScreenMap(false);
     setShowDirections(false);
     setRouteData(null);
-  };
-
-  const handleTransportModeChange = async (mode: 'driving' | 'bus' | 'cycling' | 'walking') => {
-    if (transportMode === mode) return;
-    await handleGetDirections(mode);
   };
 
   const centerOnUser = () => {
@@ -759,40 +726,7 @@ export default function MapScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={[styles.transportModeSelector, { backgroundColor: colors.card, shadowColor: colors.text }]}>
-              <TouchableOpacity
-                style={[styles.transportButton, transportMode === 'driving' && { backgroundColor: colors.primary }]}
-                onPress={() => handleTransportModeChange('driving')}
-                disabled={isLoadingRoute}
-              >
-                <Car size={20} color={transportMode === 'driving' ? '#FFF' : colors.primary} />
-                <Text style={[styles.transportButtonText, { color: transportMode === 'driving' ? '#FFF' : colors.text }]}>Car</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.transportButton, transportMode === 'bus' && { backgroundColor: colors.primary }]}
-                onPress={() => handleTransportModeChange('bus')}
-                disabled={isLoadingRoute}
-              >
-                <Bus size={20} color={transportMode === 'bus' ? '#FFF' : colors.primary} />
-                <Text style={[styles.transportButtonText, { color: transportMode === 'bus' ? '#FFF' : colors.text }]}>Bus</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.transportButton, transportMode === 'cycling' && { backgroundColor: colors.primary }]}
-                onPress={() => handleTransportModeChange('cycling')}
-                disabled={isLoadingRoute}
-              >
-                <Bike size={20} color={transportMode === 'cycling' ? '#FFF' : colors.primary} />
-                <Text style={[styles.transportButtonText, { color: transportMode === 'cycling' ? '#FFF' : colors.text }]}>Bike</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.transportButton, transportMode === 'walking' && { backgroundColor: colors.primary }]}
-                onPress={() => handleTransportModeChange('walking')}
-                disabled={isLoadingRoute}
-              >
-                <Footprints size={20} color={transportMode === 'walking' ? '#FFF' : colors.primary} />
-                <Text style={[styles.transportButtonText, { color: transportMode === 'walking' ? '#FFF' : colors.text }]}>Walk</Text>
-              </TouchableOpacity>
-            </View>
+
 
             {routeData && routeData.steps.length > 0 && (
               <View style={[styles.directionsPanel, { backgroundColor: colors.card }]}>
@@ -1330,33 +1264,5 @@ const styles = StyleSheet.create({
   actionButtonTextActive: {
     color: '#FFF',
   },
-  transportModeSelector: {
-    position: 'absolute',
-    top: 140,
-    left: 20,
-    right: 20,
-    flexDirection: 'row',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    gap: 8,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  transportButton: {
-    flex: 1,
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    gap: 6,
-  },
-  transportButtonText: {
-    fontSize: 11,
-    fontWeight: '600' as const,
-  },
+
 });
