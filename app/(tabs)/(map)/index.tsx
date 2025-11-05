@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import { Image } from 'expo-image';
-import { MapPin, X, Navigation, Layers, Heart, Search, Filter, Star, CheckCircle2, ArrowLeft, Clock, TrendingUp } from 'lucide-react-native';
+import { MapPin, X, Navigation, Layers, Heart, Search, Filter, Star, CheckCircle2, ArrowLeft, Clock, TrendingUp, Car, Bus, Bike, Footprints } from 'lucide-react-native';
 import { NYC_ATTRACTIONS, TBILISI_ATTRACTIONS, Attraction } from '@/constants/attractions';
 import { StatusBar } from 'expo-status-bar';
 import { MapView, Marker, Polyline, UserLocationMarker, type Region as MapRegion, type MapRef } from '@/components/MapComponents';
@@ -63,6 +63,7 @@ export default function MapScreen() {
   const [routeData, setRouteData] = useState<RouteData | null>(null);
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
   const [showFullScreenMap, setShowFullScreenMap] = useState(false);
+  const [transportMode, setTransportMode] = useState<'driving' | 'bus' | 'cycling' | 'walking'>('driving');
 
   const attractions = useAttractions();
   const { isFavorite, isVisited, addFavorite: addFav, removeFavorite: removeFav, addVisited: addVis } = attractions;
@@ -189,9 +190,10 @@ export default function MapScreen() {
     });
   };
 
-  const fetchRouteData = async (start: LocationCoords, end: LocationCoords): Promise<RouteData | null> => {
+  const fetchRouteData = async (start: LocationCoords, end: LocationCoords, mode: 'driving' | 'bus' | 'cycling' | 'walking'): Promise<RouteData | null> => {
     try {
-      const url = `https://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson&steps=true`;
+      const osrmMode = mode === 'bus' ? 'driving' : mode === 'cycling' ? 'cycling' : mode === 'walking' ? 'foot' : 'driving';
+      const url = `https://router.project-osrm.org/route/v1/${osrmMode}/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson&steps=true`;
       
       const response = await fetch(url);
       const data = await response.json();
@@ -224,14 +226,16 @@ export default function MapScreen() {
     }
   };
 
-  const handleGetDirections = async () => {
+  const handleGetDirections = async (mode?: 'driving' | 'bus' | 'cycling' | 'walking') => {
     if (!userLocation || !selectedAttraction) return;
     
+    const selectedMode = mode || transportMode;
+    setTransportMode(selectedMode);
     setIsLoadingRoute(true);
     setShowDirections(true);
     setShowFullScreenMap(true);
     
-    const route = await fetchRouteData(userLocation, selectedAttraction.coordinate);
+    const route = await fetchRouteData(userLocation, selectedAttraction.coordinate, selectedMode);
     
     if (route) {
       setRouteData(route);
@@ -286,6 +290,11 @@ export default function MapScreen() {
     setShowFullScreenMap(false);
     setShowDirections(false);
     setRouteData(null);
+  };
+
+  const handleTransportModeChange = async (mode: 'driving' | 'bus' | 'cycling' | 'walking') => {
+    if (transportMode === mode) return;
+    await handleGetDirections(mode);
   };
 
   const centerOnUser = () => {
@@ -592,7 +601,7 @@ export default function MapScreen() {
 
               <TouchableOpacity
                 style={[styles.directionsButton, isLoadingRoute && styles.directionsButtonLoading]}
-                onPress={handleGetDirections}
+                onPress={() => handleGetDirections()}
                 disabled={isLoadingRoute}
               >
                 {isLoadingRoute ? (
@@ -700,6 +709,41 @@ export default function MapScreen() {
                 onPress={toggleMapType}
               >
                 <Layers size={20} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.transportModeSelector, { backgroundColor: colors.card, shadowColor: colors.text }]}>
+              <TouchableOpacity
+                style={[styles.transportButton, transportMode === 'driving' && { backgroundColor: colors.primary }]}
+                onPress={() => handleTransportModeChange('driving')}
+                disabled={isLoadingRoute}
+              >
+                <Car size={20} color={transportMode === 'driving' ? '#FFF' : colors.primary} />
+                <Text style={[styles.transportButtonText, { color: transportMode === 'driving' ? '#FFF' : colors.text }]}>Car</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.transportButton, transportMode === 'bus' && { backgroundColor: colors.primary }]}
+                onPress={() => handleTransportModeChange('bus')}
+                disabled={isLoadingRoute}
+              >
+                <Bus size={20} color={transportMode === 'bus' ? '#FFF' : colors.primary} />
+                <Text style={[styles.transportButtonText, { color: transportMode === 'bus' ? '#FFF' : colors.text }]}>Bus</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.transportButton, transportMode === 'cycling' && { backgroundColor: colors.primary }]}
+                onPress={() => handleTransportModeChange('cycling')}
+                disabled={isLoadingRoute}
+              >
+                <Bike size={20} color={transportMode === 'cycling' ? '#FFF' : colors.primary} />
+                <Text style={[styles.transportButtonText, { color: transportMode === 'cycling' ? '#FFF' : colors.text }]}>Bike</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.transportButton, transportMode === 'walking' && { backgroundColor: colors.primary }]}
+                onPress={() => handleTransportModeChange('walking')}
+                disabled={isLoadingRoute}
+              >
+                <Footprints size={20} color={transportMode === 'walking' ? '#FFF' : colors.primary} />
+                <Text style={[styles.transportButtonText, { color: transportMode === 'walking' ? '#FFF' : colors.text }]}>Walk</Text>
               </TouchableOpacity>
             </View>
 
@@ -1235,5 +1279,34 @@ const styles = StyleSheet.create({
   },
   actionButtonTextActive: {
     color: '#FFF',
+  },
+  transportModeSelector: {
+    position: 'absolute',
+    top: 140,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    gap: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  transportButton: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    gap: 6,
+  },
+  transportButtonText: {
+    fontSize: 11,
+    fontWeight: '600' as const,
   },
 });
