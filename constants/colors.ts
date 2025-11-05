@@ -19,6 +19,7 @@ export const Colors = {
     searchBackground: '#FFFFFF',
     inputBackground: '#FFFFFF',
     loadingBackground: '#F5F5F5',
+    adBackground: '#F0F0F0',
   },
   dark: {
     primary: '#0A84FF',
@@ -40,6 +41,7 @@ export const Colors = {
     searchBackground: '#2C2C2E',
     inputBackground: '#2C2C2E',
     loadingBackground: '#1C1C1E',
+    adBackground: '#2C2C2E',
   },
 };
 

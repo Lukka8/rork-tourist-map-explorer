@@ -1,57 +1,68 @@
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { useThemeColors } from '@/lib/use-theme-colors';
 
+type AdSize = 'banner' | 'large-banner' | 'medium-rectangle' | 'full-banner';
+
 interface AdBannerProps {
-  size?: 'banner' | 'large-banner' | 'medium-rectangle';
+  size?: AdSize;
 }
+
+const AD_SIZES = {
+  banner: { width: 320, height: 50 },
+  'large-banner': { width: 320, height: 100 },
+  'medium-rectangle': { width: 300, height: 250 },
+  'full-banner': { width: 468, height: 60 },
+} as const;
 
 export function AdBanner({ size = 'banner' }: AdBannerProps) {
   const colors = useThemeColors();
-
-  const getAdHeight = () => {
-    switch (size) {
-      case 'banner':
-        return 50;
-      case 'large-banner':
-        return 100;
-      case 'medium-rectangle':
-        return 250;
-      default:
-        return 50;
-    }
-  };
-
-  if (Platform.OS === 'web') {
-    return null;
-  }
+  const dimensions = AD_SIZES[size];
 
   return (
-    <View style={[styles.adContainer, { height: getAdHeight(), backgroundColor: colors.card, borderColor: colors.border }]}>
-      <Text style={[styles.adLabel, { color: colors.secondaryText }]}>Advertisement</Text>
-      <Text style={[styles.adPlaceholder, { color: colors.secondaryText }]}>
-        Ad Space ({size})
+    <View 
+      style={[
+        styles.container, 
+        { 
+          backgroundColor: colors.adBackground,
+          borderColor: colors.border,
+          width: dimensions.width,
+          height: dimensions.height,
+        }
+      ]}
+    >
+      <Text style={[styles.text, { color: colors.secondaryText }]}>
+        Ad Placeholder
+      </Text>
+      <Text style={[styles.sizeText, { color: colors.secondaryText }]}>
+        {size} ({dimensions.width}x{dimensions.height})
+      </Text>
+      <Text style={[styles.infoText, { color: colors.secondaryText }]}>
+        Testing Mode
       </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  adContainer: {
-    width: '100%',
-    alignItems: 'center',
+  container: {
+    alignSelf: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1,
     borderRadius: 8,
-    overflow: 'hidden',
+    borderStyle: 'dashed' as const,
+    gap: 4,
   },
-  adLabel: {
-    fontSize: 10,
+  text: {
+    fontSize: 14,
     fontWeight: '600' as const,
-    marginBottom: 4,
-    opacity: 0.6,
   },
-  adPlaceholder: {
+  sizeText: {
     fontSize: 12,
-    fontWeight: '500' as const,
+  },
+  infoText: {
+    fontSize: 10,
+    fontStyle: 'italic' as const,
   },
 });
