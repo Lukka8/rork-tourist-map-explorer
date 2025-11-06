@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import {
   User,
@@ -86,7 +87,11 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.secondaryBackground }]}>
-      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: colors.card }} testID="profile-safe-top">
+        <View />
+      </SafeAreaView>
+      <View testID="profile-header" style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+
         <View style={styles.headerContent}>
           <View style={[styles.avatarContainer, { backgroundColor: colors.primary + '20' }]}>
             <User size={48} color={colors.primary} />
@@ -100,6 +105,7 @@ export default function ProfileScreen() {
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity 
+            testID="theme-toggle"
             style={[styles.themeButton, { borderColor: colors.primary }]} 
             onPress={() => setShowThemeMenu(!showThemeMenu)}
           >
