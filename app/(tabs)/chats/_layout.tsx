@@ -14,6 +14,7 @@ export default function ChatsLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: 'Chats' }} />
+      <Stack.Screen name="create" options={{ title: 'New Chat' }} />
       <Stack.Screen name="[chatId]" options={{ title: 'Conversation' }} />
     </Stack>
   );

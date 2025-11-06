@@ -30,8 +30,8 @@ export default function ChatsHome() {
           testID="new-chat"
           style={[styles.newButton, { backgroundColor: colors.primary }]}
           onPress={() => {
-            const id = createChat('New Chat', friends.map(f => f.id));
-            router.push(`/chats/${id}`);
+            console.log('[Chats] Navigate to create');
+            router.push('/chats/create');
           }}
         >
           <Plus size={20} color="#FFF" />
