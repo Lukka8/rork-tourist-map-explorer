@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { NYC_ATTRACTIONS, TBILISI_ATTRACTIONS, type Attraction } from '@/constants/attractions';
 
 type User = {
   id: number;
@@ -189,6 +190,29 @@ async function mockFetch<T = unknown>(endpoint: string, options: RequestInit = {
     return { success: true, message: 'Mock success' } as T;
   }
 
+  if (endpoint.startsWith('/api/locations/search') && method === 'POST') {
+    const b = toRecord(body);
+    const bounds = (b.bounds as { north: number; south: number; east: number; west: number }) ?? { north: 90, south: -90, east: 180, west: -180 };
+    const limit = Number((b.limit as number) ?? 200);
+    const zoom = Number((b.zoom as number) ?? 10);
+
+    const all: Attraction[] = [...NYC_ATTRACTIONS, ...TBILISI_ATTRACTIONS];
+
+    const filtered = all.filter((a) => {
+      const lat = a.coordinate.latitude;
+      const lon = a.coordinate.longitude;
+      const inLat = lat <= bounds.north && lat >= bounds.south;
+      const crossesIDL = bounds.west > bounds.east; // handle bounding boxes spanning the antimeridian
+      const inLon = crossesIDL ? (lon >= bounds.west || lon <= bounds.east) : (lon >= bounds.west && lon <= bounds.east);
+      return inLat && inLon;
+    });
+
+    const densityFactor = Math.max(1, Math.round(12 - Math.min(zoom, 12))); // lower zoom => fewer points
+    const decimated = filtered.filter((_, idx) => idx % densityFactor === 0).slice(0, limit);
+
+    return { items: decimated, total: filtered.length } as T;
+  }
+
   throw new Error(`No mock handler for ${method} ${endpoint}`);
 }
 
@@ -319,6 +343,14 @@ export const api = {
 
     list: (attractionId: string) =>
       apiFetch<Review[]>(`/api/reviews/list/${attractionId}`),
+  },
+
+  locations: {
+    search: (params: { bounds: { north: number; south: number; east: number; west: number }; zoom?: number; limit?: number }) =>
+      apiFetch<{ items: Attraction[]; total: number }>(`/api/locations/search`, {
+        method: 'POST',
+        body: JSON.stringify(params),
+      }),
   },
 
   verification: {
