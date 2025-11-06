@@ -68,17 +68,25 @@ async function apiFetch<T = unknown>(endpoint: string, options: RequestInit = {}
   console.log('[API] Response status:', response.status);
 
   if (!response.ok) {
-    let errorMessage = `HTTP ${response.status}`;
+    console.log('[API] Non-OK response, attempting mock fallback for', endpoint, 'status:', response.status);
     try {
-      const errorData = await response.json();
-      errorMessage = (errorData as { error?: string; message?: string }).error || (errorData as { error?: string; message?: string }).message || errorMessage;
-    } catch (e) {
-      console.log('[API] Failed to parse error response:', e);
-      const text = await response.text().catch(() => '');
-      console.log('[API] Error response text:', text);
-      errorMessage = text || errorMessage;
+      const mock = await mockFetch<T>(endpoint, options);
+      console.log('[API] Mock fallback succeeded for', endpoint);
+      return mock;
+    } catch (mockErr) {
+      let errorMessage = `HTTP ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = (errorData as { error?: string; message?: string }).error || (errorData as { error?: string; message?: string }).message || errorMessage;
+      } catch (e) {
+        console.log('[API] Failed to parse error response:', e);
+        const text = await response.text().catch(() => '');
+        console.log('[API] Error response text:', text);
+        errorMessage = text || errorMessage;
+      }
+      console.log('[API] Mock fallback failed, throwing original error for', endpoint, mockErr);
+      throw new Error(errorMessage);
     }
-    throw new Error(errorMessage);
   }
 
   return response.json() as Promise<T>;
