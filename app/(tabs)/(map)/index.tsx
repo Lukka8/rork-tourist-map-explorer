@@ -21,6 +21,7 @@ import { MapView, Marker, Polyline, UserLocationMarker, type Region as MapRegion
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'expo-router';
 import { useAttractions } from '@/lib/attractions-context';
+import { useLists } from '@/lib/lists-context';
 import { useThemeColors } from '@/lib/use-theme-colors';
 
 const { height } = Dimensions.get('window');
@@ -69,6 +70,9 @@ export default function MapScreen() {
 
   const attractions = useAttractions();
   const { isFavorite, isVisited, addFavorite: addFav, removeFavorite: removeFav, addVisited: addVis } = attractions;
+  const { lists, addToList, createList } = useLists();
+  const [showListPicker, setShowListPicker] = useState<boolean>(false);
+  const [newListName, setNewListName] = useState<string>('');
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371;
@@ -626,9 +630,9 @@ export default function MapScreen() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
+                  testID="checkin-button"
                   style={[styles.actionButton, styles.visitedButton, isVisited(selectedAttraction.id) && styles.visitedButtonActive]}
-                  onPress={() => toggleVisited(selectedAttraction.id)}
-                  disabled={isVisited(selectedAttraction.id)}
+                  onPress={() => router.push({ pathname: '/(tabs)/(map)/checkin', params: { id: selectedAttraction.id } } as any)}
                 >
                   <CheckCircle2 
                     size={20} 
@@ -637,6 +641,16 @@ export default function MapScreen() {
                   <Text style={[styles.actionButtonText, { color: colors.success }, isVisited(selectedAttraction.id) && styles.actionButtonTextActive]}>
                     {isVisited(selectedAttraction.id) ? 'Visited' : 'Check In'}
                   </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.actionButtons}>
+                <TouchableOpacity
+                  style={[styles.actionButton, { borderColor: colors.primary, backgroundColor: '#FFF' }]}
+                  onPress={() => setShowListPicker(true)}
+                >
+                  <Layers size={20} color={colors.primary} />
+                  <Text style={[styles.actionButtonText, { color: colors.primary }]}>Add to List</Text>
                 </TouchableOpacity>
               </View>
 
@@ -667,6 +681,40 @@ export default function MapScreen() {
             </ScrollView>
           </View>
         </Animated.View>
+      )}
+
+      {/* List Picker Modal */}
+      {showListPicker && selectedAttraction && (
+        <Modal transparent animationType="fade" visible={showListPicker} onRequestClose={() => setShowListPicker(false)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
+            <View style={[{ padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16 }, { backgroundColor: colors.card }]}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 8 }}>Save to List</Text>
+              <ScrollView style={{ maxHeight: 280 }}>
+                {lists.map((l) => (
+                  <TouchableOpacity key={l.id} style={[{ paddingVertical: 12, borderBottomWidth: 1 }, { borderBottomColor: colors.border }]} onPress={async () => { await addToList(l.id, selectedAttraction.id); setShowListPicker(false); }}>
+                    <Text style={{ color: colors.text }}>{l.name}</Text>
+                  </TouchableOpacity>
+                ))}
+                <View style={{ height: 12 }} />
+                <View style={[{ flexDirection: 'row', gap: 8 }]}>
+                  <TextInput
+                    value={newListName}
+                    onChangeText={setNewListName}
+                    placeholder="New list name"
+                    placeholderTextColor={colors.secondaryText}
+                    style={[{ flex: 1, height: 44, borderRadius: 12, borderWidth: 1, paddingHorizontal: 12 }, { backgroundColor: colors.inputBackground, borderColor: colors.border, color: colors.text }]}
+                  />
+                  <TouchableOpacity style={[{ height: 44, borderRadius: 12, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' }, { backgroundColor: colors.primary }]} onPress={async () => { if (!newListName.trim()) return; const n = newListName.trim(); setNewListName(''); await createList(n); }}>
+                    <Text style={{ color: '#FFF', fontWeight: '700' }}>Create</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+              <TouchableOpacity style={[{ height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 12 }, { backgroundColor: colors.searchBackground }]} onPress={() => setShowListPicker(false)}>
+                <Text style={{ color: colors.text }}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       )}
 
       {showFullScreenMap && selectedAttraction && (

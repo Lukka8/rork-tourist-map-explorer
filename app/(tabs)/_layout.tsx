@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { User, Compass, MessageSquareText } from 'lucide-react-native';
+import { User, Compass, MessageSquareText, Activity } from 'lucide-react-native';
 import { useThemeColors } from '@/lib/use-theme-colors';
 
 export default function TabsLayout() {
@@ -27,6 +27,13 @@ export default function TabsLayout() {
         options={{
           title: 'Explore',
           tabBarIcon: ({ color, size }) => <Compass size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="activity"
+        options={{
+          title: 'Activity',
+          tabBarIcon: ({ color, size }) => <Activity size={size} color={color} />,
         }}
       />
       <Tabs.Screen

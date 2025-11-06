@@ -189,6 +189,9 @@ export default function ProfileScreen() {
         <TouchableOpacity style={[styles.socialButton, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => router.push('/(tabs)/(profile)/circles')}>
           <Text style={[styles.socialButtonText, { color: colors.text }]}>Circles</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={[styles.socialButton, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => router.push('/(tabs)/(profile)/lists')}>
+          <Text style={[styles.socialButtonText, { color: colors.text }]}>Lists</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={[styles.tabsContainer, { backgroundColor: colors.card }]}>

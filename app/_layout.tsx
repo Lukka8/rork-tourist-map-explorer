@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { SocialProvider } from "@/lib/social-context";
 import { AttractionsProvider } from "@/lib/attractions-context";
 import { ThemeProvider } from "@/lib/theme-context";
+import { ListsProvider } from "@/lib/lists-context";
 
 if (Platform.OS === 'web') {
   try {
@@ -107,13 +108,15 @@ export default function RootLayout() {
       <ThemeProvider>
         <AuthProvider>
           <AttractionsProvider>
-            <SocialProvider>
-              <GestureHandlerRootView style={{ flex: 1 }}>
-                <AuthGate>
-                  <RootLayoutNav />
-                </AuthGate>
-              </GestureHandlerRootView>
-            </SocialProvider>
+            <ListsProvider>
+              <SocialProvider>
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                  <AuthGate>
+                    <RootLayoutNav />
+                  </AuthGate>
+                </GestureHandlerRootView>
+              </SocialProvider>
+            </ListsProvider>
           </AttractionsProvider>
         </AuthProvider>
       </ThemeProvider>

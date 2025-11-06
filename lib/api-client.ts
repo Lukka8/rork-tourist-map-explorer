@@ -213,6 +213,90 @@ async function mockFetch<T = unknown>(endpoint: string, options: RequestInit = {
     return { items: decimated, total: filtered.length } as T;
   }
 
+  if (endpoint.startsWith('/api/checkins/create') && method === 'POST') {
+    const b = toRecord(body);
+    const id = `chk_${Date.now()}`;
+    const item = { id, attractionId: String(b.attractionId ?? ''), photoUri: (b.photoUri as string | undefined), createdAt: new Date().toISOString() };
+    const raw = await AsyncStorage.getItem('@checkins');
+    const list = raw ? JSON.parse(raw) as unknown[] : [];
+    const next = [item, ...list];
+    await AsyncStorage.setItem('@checkins', JSON.stringify(next));
+    return { success: true, checkinId: id } as T;
+  }
+
+  if (endpoint.startsWith('/api/checkins/list')) {
+    const raw = await AsyncStorage.getItem('@checkins');
+    const list = raw ? JSON.parse(raw) as unknown[] : [];
+    return list as unknown as T;
+  }
+
+  if (endpoint.startsWith('/api/feed')) {
+    const raw = await AsyncStorage.getItem('@checkins');
+    const list = (raw ? JSON.parse(raw) as Array<{ id: string; attractionId: string; photoUri?: string; createdAt: string }> : []).slice(0, 20);
+    const friends = [
+      { id: 'u1', name: 'Alice', avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200' },
+      { id: 'u2', name: 'Bob', avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200' },
+      { id: 'u3', name: 'Charlie', avatarUrl: 'https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?w=200' },
+    ];
+    const feed = list.map((it, idx) => ({ id: `feed_${it.id}`, user: friends[idx % friends.length], attractionId: it.attractionId, photoUri: it.photoUri, createdAt: it.createdAt }));
+    return feed as unknown as T;
+  }
+
+  // Lists mock
+  if (endpoint.startsWith('/api/lists')) {
+    const key = '@lists_v1';
+    const raw = await AsyncStorage.getItem(key);
+    const lists = (raw ? JSON.parse(raw) as Array<{ id: string; name: string; items: string[] }> : []);
+
+    if (endpoint === '/api/lists') {
+      return lists as unknown as T;
+    }
+
+    if (endpoint.startsWith('/api/lists/create') && method === 'POST') {
+      const b = toRecord(body);
+      const id = `list_${Date.now()}`;
+      const entry = { id, name: String(b.name ?? 'New List'), items: [] as string[] };
+      const next = [entry, ...lists];
+      await AsyncStorage.setItem(key, JSON.stringify(next));
+      return { id, name: entry.name } as T;
+    }
+
+    if (endpoint.startsWith('/api/lists/rename') && method === 'POST') {
+      const b = toRecord(body);
+      const id = String(b.id ?? '');
+      const name = String(b.name ?? '');
+      const next = lists.map(l => l.id === id ? { ...l, name } : l);
+      await AsyncStorage.setItem(key, JSON.stringify(next));
+      return { success: true } as T;
+    }
+
+    if (endpoint.startsWith('/api/lists/remove') && method === 'POST') {
+      const b = toRecord(body);
+      const id = String(b.id ?? '');
+      const next = lists.filter(l => l.id !== id);
+      await AsyncStorage.setItem(key, JSON.stringify(next));
+      return { success: true } as T;
+    }
+
+    if (endpoint.startsWith('/api/lists/add-item') && method === 'POST') {
+      const b = toRecord(body);
+      const listId = String(b.listId ?? '');
+      const attractionId = String(b.attractionId ?? '');
+      const next = lists.map(l => l.id === listId ? { ...l, items: Array.from(new Set([...(l.items || []), attractionId])) } : l);
+      await AsyncStorage.setItem(key, JSON.stringify(next));
+      return { success: true } as T;
+    }
+
+    if (endpoint.startsWith('/api/lists/remove-item') && method === 'POST') {
+      const b = toRecord(body);
+      const listId = String(b.listId ?? '');
+      const attractionId = String(b.attractionId ?? '');
+      const next = lists.map(l => l.id === listId ? { ...l, items: (l.items || []).filter(it => it !== attractionId) } : l);
+      await AsyncStorage.setItem(key, JSON.stringify(next));
+      return { success: true } as T;
+    }
+  }
+
   throw new Error(`No mock handler for ${method} ${endpoint}`);
 }
 
@@ -351,6 +435,28 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(params),
       }),
+  },
+
+  checkins: {
+    create: (data: { attractionId: string; photoUri?: string }) =>
+      apiFetch<{ success: boolean; checkinId: string }>(`/api/checkins/create`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    list: () => apiFetch<Array<{ id: string; attractionId: string; photoUri?: string; createdAt: string }>>('/api/checkins/list'),
+  },
+
+  feed: {
+    get: () => apiFetch<Array<{ id: string; user: { id: string; name: string; avatarUrl?: string }; attractionId: string; photoUri?: string; createdAt: string }>>('/api/feed'),
+  },
+
+  lists: {
+    all: () => apiFetch<Array<{ id: string; name: string; items: string[] }>>('/api/lists'),
+    create: (name: string) => apiFetch<{ id: string; name: string }>('/api/lists/create', { method: 'POST', body: JSON.stringify({ name }) }),
+    rename: (id: string, name: string) => apiFetch<{ success: boolean }>('/api/lists/rename', { method: 'POST', body: JSON.stringify({ id, name }) }),
+    remove: (id: string) => apiFetch<{ success: boolean }>('/api/lists/remove', { method: 'POST', body: JSON.stringify({ id }) }),
+    addItem: (listId: string, attractionId: string) => apiFetch<{ success: boolean }>('/api/lists/add-item', { method: 'POST', body: JSON.stringify({ listId, attractionId }) }),
+    removeItem: (listId: string, attractionId: string) => apiFetch<{ success: boolean }>('/api/lists/remove-item', { method: 'POST', body: JSON.stringify({ listId, attractionId }) }),
   },
 
   verification: {
