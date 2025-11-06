@@ -11,6 +11,7 @@ interface User {
   phone: string;
   email_verified: boolean;
   phone_verified: boolean;
+  avatarUrl?: string;
 }
 
 interface AuthContextValue {
@@ -22,6 +23,7 @@ interface AuthContextValue {
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateAvatar: (uri: string | null) => Promise<void>;
 }
 
 interface RegisterData {
@@ -96,6 +98,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         phone: '+1234567890',
         email_verified: true,
         phone_verified: true,
+        avatarUrl: undefined,
       };
       
       const mockToken = 'mock-token-' + Date.now();
@@ -124,6 +127,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         phone: data.phone,
         email_verified: false,
         phone_verified: false,
+        avatarUrl: undefined,
       };
       
       const mockToken = 'mock-token-' + Date.now();
@@ -154,6 +158,19 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     await fetchUser();
   };
 
+  const updateAvatar = async (uri: string | null) => {
+    try {
+      console.log('[Auth] Updating avatar to', uri);
+      if (!user) return;
+      const updated: User = { ...user, avatarUrl: uri ?? undefined };
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(updated));
+      setUser(updated);
+    } catch (e) {
+      console.error('[Auth] Failed to update avatar', e);
+      throw e;
+    }
+  };
+
   const value: AuthContextValue = {
     user,
     token,
@@ -163,6 +180,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     register,
     logout,
     refreshUser,
+    updateAvatar,
   };
 
   return value;

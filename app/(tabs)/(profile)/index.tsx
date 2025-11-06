@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -30,9 +30,11 @@ import { NYC_ATTRACTIONS } from '@/constants/attractions';
 import { useAttractions } from '@/lib/attractions-context';
 import { useTheme, type ThemeMode } from '@/lib/theme-context';
 import { useThemeColors } from '@/lib/use-theme-colors';
+import * as ImagePicker from 'expo-image-picker';
+import { Platform } from 'react-native';
 
 export default function ProfileScreen() {
-  const { user, logout, isLoading: isAuthLoading } = useAuth();
+  const { user, logout, isLoading: isAuthLoading, updateAvatar } = useAuth();
   const router = useRouter();
   const [selectedTab, setSelectedTab] = useState<'favorites' | 'visited'>('favorites');
   const { favorites, visited, removeFavorite } = useAttractions();
@@ -66,6 +68,31 @@ export default function ProfileScreen() {
     router.push(`/${id}` as any);
   };
 
+  const themeIcon = themeMode === 'dark' ? Moon : themeMode === 'light' ? Sun : Monitor;
+
+  const pickAvatar = useCallback(async () => {
+    try {
+      console.log('[Profile] Opening image picker');
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.9,
+      });
+      if (result.canceled) {
+        console.log('[Profile] Picker canceled');
+        return;
+      }
+      const asset = result.assets?.[0];
+      const uri = asset?.uri ?? null;
+      console.log('[Profile] Selected avatar uri:', uri);
+      await updateAvatar(uri);
+    } catch (e) {
+      console.error('[Profile] Failed to pick avatar', e);
+      Alert.alert('Avatar', 'Failed to choose image. Please try again.');
+    }
+  }, [updateAvatar]);
+
   if (isAuthLoading || !user) {
     return (
       <View style={styles.loadingContainer}>
@@ -83,8 +110,6 @@ export default function ProfileScreen() {
     setShowThemeMenu(false);
   };
 
-  const themeIcon = themeMode === 'dark' ? Moon : themeMode === 'light' ? Sun : Monitor;
-
   return (
     <View style={[styles.container, { backgroundColor: colors.secondaryBackground }]}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: colors.card }} testID="profile-safe-top">
@@ -93,8 +118,17 @@ export default function ProfileScreen() {
       <View testID="profile-header" style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
 
         <View style={styles.headerContent}>
-          <View style={[styles.avatarContainer, { backgroundColor: colors.primary + '20' }]}>
-            <User size={48} color={colors.primary} />
+          <View
+            style={[styles.avatarContainer, { backgroundColor: colors.primary + '20' }]}
+            onStartShouldSetResponder={() => true}
+            onResponderRelease={pickAvatar}
+            testID="profile-avatar"
+          >
+            {user.avatarUrl ? (
+              <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} contentFit="cover" />
+            ) : (
+              <User size={48} color={colors.primary} />
+            )}
           </View>
           <View style={styles.userInfo}>
             <Text style={[styles.userName, { color: colors.text }]}>
@@ -350,6 +384,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 40,
   },
   themeMenu: {
     marginHorizontal: 20,
