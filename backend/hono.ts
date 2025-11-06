@@ -1,376 +1,389 @@
-import express, { Request, Response, NextFunction } from 'express';
-import cors from 'cors';
-import mysql from 'mysql2/promise';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { Resend } from 'resend';
-import twilio from 'twilio';
+import { Hono } from 'hono';
+import { trpcServer } from '@hono/trpc-server';
+import { appRouter } from '@/backend/trpc/app-router';
+import { createContext } from '@/backend/trpc/create-context';
+import { NYC_ATTRACTIONS, TBILISI_ATTRACTIONS, type Attraction } from '@/constants/attractions';
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+type User = {
+  id: number;
+  email: string;
+  username: string;
+  firstname: string;
+  lastname: string;
+  phone: string;
+  email_verified: boolean;
+  phone_verified: boolean;
+  password?: string;
+};
 
-let pool: mysql.Pool;
+type Review = {
+  id: number;
+  user_id: number;
+  attraction_id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  user_name: string;
+};
 
-async function initDB() {
-  try {
-    pool = mysql.createPool({
-      host: process.env.DB_HOST || 'localhost',
-      user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD || '',
-      database: process.env.DB_NAME || 'tourist_map',
-      waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0,
-    });
-    console.log('[DB] Connected to MySQL database');
-  } catch (err) {
-    console.error('[DB] Connection error:', err);
-  }
+type VerificationRow = {
+  id: number;
+  user_id: number;
+  type: 'email' | 'phone';
+  code: string;
+  expires_at: string;
+  verified: boolean;
+  created_at: string;
+};
+
+const app = new Hono();
+
+const db = {
+  users: [] as User[],
+  favorites: new Map<number, Set<string>>(),
+  visited: new Map<number, Set<string>>(),
+  reviews: [] as Review[],
+  verification: [] as VerificationRow[],
+  lists: [] as { id: string; user_id: number; name: string; items: string[] }[],
+  checkins: [] as { id: string; user_id: number; attractionId: string; photoUri?: string; createdAt: string }[],
+};
+
+function ok<T>(c: any, body: T) {
+  return c.json(body);
 }
 
-initDB();
-
-function authMiddleware(req: Request & { userId?: number }, res: Response, next: NextFunction) {
-  try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) return res.status(401).json({ error: 'No token provided' });
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret_key_here') as { userId: number };
-    req.userId = decoded.userId;
-    next();
-  } catch (error) {
-    return res.status(401).json({ error: 'Invalid token' });
-  }
+function badRequest(c: any, message: string) {
+  return c.json({ error: message }, 400);
 }
 
-app.get('/', (_req: Request, res: Response) => {
-  return res.json({ status: 'ok', message: 'API is running' });
-});
-
-app.post('/api/auth/check-username', async (req: Request, res: Response) => {
-  try {
-    const { username } = req.body as { username?: string };
-    if (!username) return res.status(400).json({ error: 'Missing username' });
-    const [rows] = await pool.query('SELECT id FROM users WHERE username = ? LIMIT 1', [username]);
-    return res.json({ available: (rows as any[]).length === 0 });
-  } catch (error) {
-    console.error('[Auth] Check username error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-app.post('/api/auth/check-email', async (req: Request, res: Response) => {
-  try {
-    const { email } = req.body as { email?: string };
-    if (!email) return res.status(400).json({ error: 'Missing email' });
-    const [rows] = await pool.query('SELECT id FROM users WHERE email = ? LIMIT 1', [email]);
-    return res.json({ available: (rows as any[]).length === 0 });
-  } catch (error) {
-    console.error('[Auth] Check email error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-app.post('/api/auth/register', async (req: Request, res: Response) => {
-  try {
-    const { email, password, username, firstname, lastname, phone } = req.body as { email?: string; password?: string; username?: string; firstname?: string; lastname?: string; phone?: string };
-    if (!email || !password || !username || !firstname || !lastname || !phone) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-    const [existing] = await pool.query('SELECT id FROM users WHERE email = ? OR username = ? LIMIT 1', [email, username]);
-    if ((existing as any[]).length > 0) {
-      return res.status(400).json({ error: 'Email or username already exists' });
-    }
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const [result] = await pool.query(
-      'INSERT INTO users (email, password, username, firstname, lastname, phone, email_verified, phone_verified) VALUES (?, ?, ?, ?, ?, ?, 0, 0)',
-      [email, hashedPassword, username, firstname, lastname, phone]
-    );
-    const token = jwt.sign({ userId: (result as any).insertId }, process.env.JWT_SECRET || 'your_jwt_secret_key_here', { expiresIn: '30d' });
-    return res.json({
-      token,
-      user: { id: (result as any).insertId, email, username, firstname, lastname, phone, email_verified: false, phone_verified: false },
-    });
-  } catch (error) {
-    console.error('[Auth] Register error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-app.post('/api/auth/login', async (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body as { email?: string; password?: string };
-    if (!email || !password) return res.status(400).json({ error: 'Missing required fields' });
-    const [users] = await pool.query('SELECT * FROM users WHERE email = ? LIMIT 1', [email]);
-    if ((users as any[]).length === 0) return res.status(401).json({ error: 'Invalid credentials' });
-    const user = (users as any[])[0];
-    const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) return res.status(401).json({ error: 'Invalid credentials' });
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET || 'your_jwt_secret_key_here', { expiresIn: '30d' });
-    return res.json({ token, user: { id: user.id, email: user.email, username: user.username, firstname: user.firstname, lastname: user.lastname, phone: user.phone, email_verified: !!user.email_verified, phone_verified: !!user.phone_verified } });
-  } catch (error) {
-    console.error('[Auth] Login error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-app.get('/api/auth/me', authMiddleware, async (req: Request & { userId?: number }, res: Response) => {
-  try {
-    const [users] = await pool.query('SELECT id, email, username, firstname, lastname, phone, email_verified, phone_verified FROM users WHERE id = ? LIMIT 1', [req.userId]);
-    if ((users as any[]).length === 0) return res.status(404).json({ error: 'User not found' });
-    const u = (users as any[])[0];
-    return res.json({ id: u.id, email: u.email, username: u.username, firstname: u.firstname, lastname: u.lastname, phone: u.phone, email_verified: !!u.email_verified, phone_verified: !!u.phone_verified });
-  } catch (error) {
-    console.error('[Auth] Me error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-app.post('/api/favorites/add', authMiddleware, async (req: Request & { userId?: number }, res: Response) => {
-  try {
-    const { attractionId } = req.body as { attractionId?: string };
-    if (!attractionId) return res.status(400).json({ error: 'Missing attractionId' });
-    const [existing] = await pool.query('SELECT id FROM favorites WHERE user_id = ? AND attraction_id = ? LIMIT 1', [req.userId, attractionId]);
-    if ((existing as any[]).length > 0) return res.json({ success: true, message: 'Already in favorites' });
-    await pool.query('INSERT INTO favorites (user_id, attraction_id) VALUES (?, ?)', [req.userId, attractionId]);
-    return res.json({ success: true });
-  } catch (error) {
-    console.error('[Favorites] Add error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-app.post('/api/favorites/remove', authMiddleware, async (req: Request & { userId?: number }, res: Response) => {
-  try {
-    const { attractionId } = req.body as { attractionId?: string };
-    if (!attractionId) return res.status(400).json({ error: 'Missing attractionId' });
-    await pool.query('DELETE FROM favorites WHERE user_id = ? AND attraction_id = ?', [req.userId, attractionId]);
-    return res.json({ success: true });
-  } catch (error) {
-    console.error('[Favorites] Remove error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-app.get('/api/favorites/list', authMiddleware, async (req: Request & { userId?: number }, res: Response) => {
-  try {
-    const [favorites] = await pool.query('SELECT attraction_id FROM favorites WHERE user_id = ?', [req.userId]);
-    return res.json((favorites as any[]).map((f: any) => f.attraction_id));
-  } catch (error) {
-    console.error('[Favorites] List error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-app.post('/api/visited/add', authMiddleware, async (req: Request & { userId?: number }, res: Response) => {
-  try {
-    const { attractionId } = req.body as { attractionId?: string };
-    if (!attractionId) return res.status(400).json({ error: 'Missing attractionId' });
-    const [existing] = await pool.query('SELECT id FROM visited WHERE user_id = ? AND attraction_id = ? LIMIT 1', [req.userId, attractionId]);
-    if ((existing as any[]).length > 0) return res.json({ success: true, message: 'Already visited' });
-    await pool.query('INSERT INTO visited (user_id, attraction_id, visited_at) VALUES (?, ?, NOW())', [req.userId, attractionId]);
-    return res.json({ success: true });
-  } catch (error) {
-    console.error('[Visited] Add error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-app.get('/api/visited/list', authMiddleware, async (req: Request & { userId?: number }, res: Response) => {
-  try {
-    const [visited] = await pool.query('SELECT attraction_id FROM visited WHERE user_id = ?', [req.userId]);
-    return res.json((visited as any[]).map((v: any) => v.attraction_id));
-  } catch (error) {
-    console.error('[Visited] List error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-app.post('/api/reviews/add', authMiddleware, async (req: Request & { userId?: number }, res: Response) => {
-  try {
-    const { attractionId, rating, comment } = req.body as { attractionId?: string; rating?: number; comment?: string };
-    if (!attractionId || !rating) return res.status(400).json({ error: 'Missing required fields' });
-    const [result] = await pool.query('INSERT INTO reviews (user_id, attraction_id, rating, comment, created_at) VALUES (?, ?, ?, ?, NOW())', [req.userId, attractionId, rating, comment ?? null]);
-    return res.json({ success: true, reviewId: (result as any).insertId });
-  } catch (error) {
-    console.error('[Reviews] Add error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-app.get('/api/reviews/list/:attractionId', async (req: Request, res: Response) => {
-  try {
-    const { attractionId } = req.params as { attractionId: string };
-    const [reviews] = await pool.query(
-      `SELECT r.*, u.username as user_name 
-       FROM reviews r 
-       JOIN users u ON r.user_id = u.id 
-       WHERE r.attraction_id = ? 
-       ORDER BY r.created_at DESC`,
-      [attractionId]
-    );
-    return res.json(reviews);
-  } catch (error) {
-    console.error('[Reviews] List error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const hasEmailSender = !!(resend && process.env.RESEND_FROM_EMAIL);
-const hasTwilio = !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER);
-const twilioClient = hasTwilio ? twilio(process.env.TWILIO_ACCOUNT_SID as string, process.env.TWILIO_AUTH_TOKEN as string) : null;
-
-const generateCode = () => String(Math.floor(100000 + Math.random() * 900000));
-
-async function createCode(userId: number, type: string) {
-  const code = generateCode();
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-  await pool.query('DELETE FROM verification_codes WHERE user_id = ? AND type = ? AND verified = 0', [userId, type]);
-  await pool.query('INSERT INTO verification_codes (user_id, type, code, expires_at, verified, created_at) VALUES (?, ?, ?, ?, 0, NOW())', [userId, type, code, expiresAt]);
-  return code;
+function unauthorized(c: any, message = 'Unauthorized') {
+  return c.json({ error: message }, 401);
 }
 
-app.post('/api/verification/send-email-code', authMiddleware, async (req: Request & { userId?: number }, res: Response) => {
-  try {
-    const [[user]] = (await pool.query('SELECT email, email_verified FROM users WHERE id = ? LIMIT 1', [req.userId])) as any[];
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    if (user.email_verified) return res.json({ success: true, message: 'Email already verified' });
-    const code = await createCode(req.userId as number, 'email');
-    if (hasEmailSender && resend) {
-      try {
-        await resend.emails.send({ from: process.env.RESEND_FROM_EMAIL as string, to: user.email, subject: 'Your verification code', text: `Your verification code is ${code}. It expires in 10 minutes.` });
-      } catch (e) {
-        console.error('[Verification] Resend error:', e);
-      }
-    } else {
-      console.log('[Verification] Email code (dev mode):', code);
-    }
-    return res.json({ success: true, message: 'Verification code sent' });
-  } catch (error) {
-    console.error('[Verification] Send email error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+function nowISO() {
+  return new Date().toISOString();
+}
+
+function createToken(userId: number) {
+  return `dev-token-${userId}`;
+}
+
+function parseAuth(c: any): number | null {
+  const header = c.req.header('authorization') || '';
+  const token = header.replace('Bearer ', '');
+  if (token.startsWith('dev-token-')) {
+    const id = Number(token.replace('dev-token-', ''));
+    return Number.isFinite(id) ? id : null;
   }
+  return null;
+}
+
+app.get('/', (c) => ok(c, { status: 'ok', message: 'API is running' }));
+
+app.post('/api/auth/check-username', async (c) => {
+  const body = (await c.req.json().catch(() => ({}))) as { username?: string };
+  const username = body.username?.trim();
+  if (!username) return badRequest(c, 'Missing username');
+  const exists = db.users.some((u) => u.username.toLowerCase() === username.toLowerCase());
+  return ok(c, { available: !exists });
 });
 
-app.post('/api/verification/send-phone-code', authMiddleware, async (req: Request & { userId?: number }, res: Response) => {
-  try {
-    const [[user]] = (await pool.query('SELECT phone, phone_verified FROM users WHERE id = ? LIMIT 1', [req.userId])) as any[];
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    if (user.phone_verified) return res.json({ success: true, message: 'Phone already verified' });
-    const code = await createCode(req.userId as number, 'phone');
-    if (hasTwilio && twilioClient) {
-      try {
-        await twilioClient.messages.create({ from: process.env.TWILIO_PHONE_NUMBER as string, to: user.phone, body: `Your verification code is ${code}. It expires in 10 minutes.` });
-      } catch (e) {
-        console.error('[Verification] Twilio error:', e);
-      }
-    } else {
-      console.log('[Verification] Phone code (dev mode):', code);
-    }
-    return res.json({ success: true, message: 'Verification code sent' });
-  } catch (error) {
-    console.error('[Verification] Send phone error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
+app.post('/api/auth/check-email', async (c) => {
+  const body = (await c.req.json().catch(() => ({}))) as { email?: string };
+  const email = body.email?.trim();
+  if (!email) return badRequest(c, 'Missing email');
+  const exists = db.users.some((u) => u.email.toLowerCase() === email.toLowerCase());
+  return ok(c, { available: !exists });
 });
 
-app.post('/api/verification/verify-email', authMiddleware, async (req: Request & { userId?: number }, res: Response) => {
-  try {
-    const { code } = (req.body || {}) as { code?: string };
-    if (!code || String(code).length !== 6) return res.status(400).json({ error: 'Invalid code' });
-    const [rows] = await pool.query('SELECT id, expires_at, verified FROM verification_codes WHERE user_id = ? AND type = ? AND code = ? ORDER BY created_at DESC LIMIT 1', [req.userId, 'email', String(code)]);
-    const list = rows as any[];
-    if (list.length === 0) return res.status(400).json({ error: 'Code not found' });
-    const row = list[0];
-    if (row.verified) return res.status(400).json({ error: 'Code already used' });
-    if (new Date(row.expires_at).getTime() < Date.now()) return res.status(400).json({ error: 'Code expired' });
-    await pool.query('UPDATE verification_codes SET verified = 1 WHERE id = ?', [row.id]);
-    await pool.query('UPDATE users SET email_verified = 1 WHERE id = ?', [req.userId]);
-    return res.json({ success: true, message: 'Email verified' });
-  } catch (error) {
-    console.error('[Verification] Verify email error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+app.post('/api/auth/register', async (c) => {
+  const b = (await c.req.json().catch(() => ({}))) as Partial<User> & { password?: string };
+  if (!b.email || !b.password || !b.username || !b.firstname || !b.lastname || !b.phone) {
+    return badRequest(c, 'Missing required fields');
   }
+  if (db.users.some((u) => u.email === b.email || u.username === b.username)) {
+    return badRequest(c, 'Email or username already exists');
+  }
+  const id = db.users.length + 1;
+  const user: User = {
+    id,
+    email: String(b.email),
+    username: String(b.username),
+    firstname: String(b.firstname),
+    lastname: String(b.lastname),
+    phone: String(b.phone),
+    email_verified: false,
+    phone_verified: false,
+    password: String(b.password),
+  };
+  db.users.push(user);
+  return ok(c, { token: createToken(id), user: sanitize(user) });
 });
 
-app.post('/api/verification/verify-phone', authMiddleware, async (req: Request & { userId?: number }, res: Response) => {
-  try {
-    const { code } = (req.body || {}) as { code?: string };
-    if (!code || String(code).length !== 6) return res.status(400).json({ error: 'Invalid code' });
-    const [rows] = await pool.query('SELECT id, expires_at, verified FROM verification_codes WHERE user_id = ? AND type = ? AND code = ? ORDER BY created_at DESC LIMIT 1', [req.userId, 'phone', String(code)]);
-    const list = rows as any[];
-    if (list.length === 0) return res.status(400).json({ error: 'Code not found' });
-    const row = list[0];
-    if (row.verified) return res.status(400).json({ error: 'Code already used' });
-    if (new Date(row.expires_at).getTime() < Date.now()) return res.status(400).json({ error: 'Code expired' });
-    await pool.query('UPDATE verification_codes SET verified = 1 WHERE id = ?', [row.id]);
-    await pool.query('UPDATE users SET phone_verified = 1 WHERE id = ?', [req.userId]);
-    return res.json({ success: true, message: 'Phone verified' });
-  } catch (error) {
-    console.error('[Verification] Verify phone error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
+app.post('/api/auth/login', async (c) => {
+  const b = (await c.req.json().catch(() => ({}))) as { email?: string; password?: string };
+  if (!b.email || !b.password) return badRequest(c, 'Missing required fields');
+  const u = db.users.find((x) => x.email === b.email);
+  if (!u || u.password !== b.password) return unauthorized(c, 'Invalid credentials');
+  return ok(c, { token: createToken(u.id), user: sanitize(u) });
 });
 
-app.post('/api/auth/update-email', authMiddleware, async (req: Request & { userId?: number }, res: Response) => {
-  try {
-    const { email } = (req.body || {}) as { email?: string };
-    if (!email) return res.status(400).json({ error: 'Missing email' });
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(String(email))) return res.status(400).json({ error: 'Invalid email' });
-    const [current] = await pool.query('SELECT id FROM users WHERE id = ? LIMIT 1', [req.userId]);
-    if ((current as any[]).length === 0) return res.status(404).json({ error: 'User not found' });
-    const [dupes] = await pool.query('SELECT id FROM users WHERE email = ? AND id <> ? LIMIT 1', [email, req.userId]);
-    if ((dupes as any[]).length > 0) return res.status(400).json({ error: 'Email already in use' });
-    await pool.query('UPDATE users SET email = ?, email_verified = 0 WHERE id = ?', [email, req.userId]);
-    await pool.query('DELETE FROM verification_codes WHERE user_id = ? AND type = ? AND verified = 0', [req.userId, 'email']);
-    try {
-      const code = await createCode(req.userId as number, 'email');
-      if (hasEmailSender && resend) {
-        await resend.emails.send({ from: process.env.RESEND_FROM_EMAIL as string, to: email, subject: 'Your verification code', text: `Your verification code is ${code}. It expires in 10 minutes.` });
-      } else {
-        console.log('[Verification] Email code (dev mode):', code);
-      }
-    } catch (e) {
-      console.error('[Auth] update-email send code error:', e);
-    }
-    const [updatedRows] = await pool.query('SELECT id, email, username, firstname, lastname, phone, email_verified, phone_verified FROM users WHERE id = ? LIMIT 1', [req.userId]);
-    const updated = (updatedRows as any[])[0];
-    return res.json({ success: true, message: 'Email updated. Please verify.', user: { ...updated, email_verified: !!updated.email_verified, phone_verified: !!updated.phone_verified } });
-  } catch (error) {
-    console.error('[Auth] Update email error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
+app.get('/api/auth/me', (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  const u = db.users.find((x) => x.id === userId);
+  if (!u) return c.json({ error: 'User not found' }, 404);
+  return ok(c, sanitize(u));
 });
 
-app.post('/api/auth/update-phone', authMiddleware, async (req: Request & { userId?: number }, res: Response) => {
-  try {
-    const { phone } = (req.body || {}) as { phone?: string };
-    if (!phone) return res.status(400).json({ error: 'Missing phone' });
-    const [current] = await pool.query('SELECT id FROM users WHERE id = ? LIMIT 1', [req.userId]);
-    if ((current as any[]).length === 0) return res.status(404).json({ error: 'User not found' });
-    const [dupes] = await pool.query('SELECT id FROM users WHERE phone = ? AND id <> ? LIMIT 1', [phone, req.userId]);
-    if ((dupes as any[]).length > 0) return res.status(400).json({ error: 'Phone already in use' });
-    await pool.query('UPDATE users SET phone = ?, phone_verified = 0 WHERE id = ?', [phone, req.userId]);
-    await pool.query('DELETE FROM verification_codes WHERE user_id = ? AND type = ? AND verified = 0', [req.userId, 'phone']);
-    try {
-      const code = await createCode(req.userId as number, 'phone');
-      if (hasTwilio && twilioClient) {
-        await twilioClient.messages.create({ from: process.env.TWILIO_PHONE_NUMBER as string, to: phone, body: `Your verification code is ${code}. It expires in 10 minutes.` });
-      } else {
-        console.log('[Verification] Phone code (dev mode):', code);
-      }
-    } catch (e) {
-      console.error('[Auth] update-phone send code error:', e);
-    }
-    const [updatedRows] = await pool.query('SELECT id, email, username, firstname, lastname, phone, email_verified, phone_verified FROM users WHERE id = ? LIMIT 1', [req.userId]);
-    const updated = (updatedRows as any[])[0];
-    return res.json({ success: true, message: 'Phone updated. Please verify.', user: { ...updated, email_verified: !!updated.email_verified, phone_verified: !!updated.phone_verified } });
-  } catch (error) {
-    console.error('[Auth] Update phone error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
+app.post('/api/auth/update-email', async (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  const { email } = (await c.req.json().catch(() => ({}))) as { email?: string };
+  if (!email) return badRequest(c, 'Missing email');
+  if (db.users.some((u) => u.email === email && u.id !== userId)) return badRequest(c, 'Email already in use');
+  const u = db.users.find((x) => x.id === userId)!;
+  u.email = email;
+  u.email_verified = false;
+  return ok(c, { success: true, message: 'Email updated. Please verify.', user: sanitize(u) });
 });
+
+app.post('/api/auth/update-phone', async (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  const { phone } = (await c.req.json().catch(() => ({}))) as { phone?: string };
+  if (!phone) return badRequest(c, 'Missing phone');
+  if (db.users.some((u) => u.phone === phone && u.id !== userId)) return badRequest(c, 'Phone already in use');
+  const u = db.users.find((x) => x.id === userId)!;
+  u.phone = phone;
+  u.phone_verified = false;
+  return ok(c, { success: true, message: 'Phone updated. Please verify.', user: sanitize(u) });
+});
+
+app.post('/api/verification/send-email-code', (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  const code = genCode();
+  addCode(userId, 'email', code);
+  console.log('[Verification] Email code (dev):', code);
+  return ok(c, { success: true, message: 'Verification code sent' });
+});
+
+app.post('/api/verification/send-phone-code', (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  const code = genCode();
+  addCode(userId, 'phone', code);
+  console.log('[Verification] Phone code (dev):', code);
+  return ok(c, { success: true, message: 'Verification code sent' });
+});
+
+app.post('/api/verification/verify-email', async (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  const { code } = (await c.req.json().catch(() => ({}))) as { code?: string };
+  if (!code || code.length !== 6) return badRequest(c, 'Invalid code');
+  const row = latestCode(userId, 'email', code);
+  if (!row) return badRequest(c, 'Code not found');
+  if (new Date(row.expires_at).getTime() < Date.now()) return badRequest(c, 'Code expired');
+  row.verified = true;
+  const u = db.users.find((x) => x.id === userId)!;
+  u.email_verified = true;
+  return ok(c, { success: true, message: 'Email verified' });
+});
+
+app.post('/api/verification/verify-phone', async (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  const { code } = (await c.req.json().catch(() => ({}))) as { code?: string };
+  if (!code || code.length !== 6) return badRequest(c, 'Invalid code');
+  const row = latestCode(userId, 'phone', code);
+  if (!row) return badRequest(c, 'Code not found');
+  if (new Date(row.expires_at).getTime() < Date.now()) return badRequest(c, 'Code expired');
+  row.verified = true;
+  const u = db.users.find((x) => x.id === userId)!;
+  u.phone_verified = true;
+  return ok(c, { success: true, message: 'Phone verified' });
+});
+
+app.post('/api/favorites/add', async (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  const { attractionId } = (await c.req.json().catch(() => ({}))) as { attractionId?: string };
+  if (!attractionId) return badRequest(c, 'Missing attractionId');
+  const set = db.favorites.get(userId) ?? new Set<string>();
+  set.add(String(attractionId));
+  db.favorites.set(userId, set);
+  return ok(c, { success: true });
+});
+
+app.post('/api/favorites/remove', async (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  const { attractionId } = (await c.req.json().catch(() => ({}))) as { attractionId?: string };
+  if (!attractionId) return badRequest(c, 'Missing attractionId');
+  const set = db.favorites.get(userId) ?? new Set<string>();
+  set.delete(String(attractionId));
+  db.favorites.set(userId, set);
+  return ok(c, { success: true });
+});
+
+app.get('/api/favorites/list', (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  return ok(c, Array.from(db.favorites.get(userId) ?? new Set()));
+});
+
+app.post('/api/visited/add', async (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  const { attractionId } = (await c.req.json().catch(() => ({}))) as { attractionId?: string };
+  if (!attractionId) return badRequest(c, 'Missing attractionId');
+  const set = db.visited.get(userId) ?? new Set<string>();
+  set.add(String(attractionId));
+  db.visited.set(userId, set);
+  return ok(c, { success: true });
+});
+
+app.get('/api/visited/list', (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  return ok(c, Array.from(db.visited.get(userId) ?? new Set()));
+});
+
+app.post('/api/reviews/add', async (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  const { attractionId, rating, comment } = (await c.req.json().catch(() => ({}))) as { attractionId?: string; rating?: number; comment?: string };
+  if (!attractionId || rating == null) return badRequest(c, 'Missing required fields');
+  const u = db.users.find((x) => x.id === userId);
+  const id = db.reviews.length + 1;
+  db.reviews.unshift({ id, user_id: userId, attraction_id: String(attractionId), rating: Number(rating), comment: comment ?? null, created_at: nowISO(), user_name: u?.username ?? 'user' });
+  return ok(c, { success: true, reviewId: id });
+});
+
+app.get('/api/reviews/list/:attractionId', (c) => {
+  const { attractionId } = c.req.param();
+  const list = db.reviews.filter((r) => r.attraction_id === String(attractionId));
+  return ok(c, list);
+});
+
+app.post('/api/lists/create', async (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  const { name } = (await c.req.json().catch(() => ({}))) as { name?: string };
+  const id = `list_${Date.now()}`;
+  db.lists.unshift({ id, user_id: userId, name: name ?? 'New List', items: [] });
+  return ok(c, { id, name: name ?? 'New List' });
+});
+
+app.post('/api/lists/rename', async (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  const { id, name } = (await c.req.json().catch(() => ({}))) as { id?: string; name?: string };
+  const li = db.lists.find((l) => l.user_id === userId && l.id === id);
+  if (!li) return c.json({ error: 'List not found' }, 404);
+  li.name = name ?? li.name;
+  return ok(c, { success: true });
+});
+
+app.post('/api/lists/remove', async (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  const { id } = (await c.req.json().catch(() => ({}))) as { id?: string };
+  const before = db.lists.length;
+  db.lists = db.lists.filter((l) => !(l.user_id === userId && l.id === id));
+  return ok(c, { success: before !== db.lists.length });
+});
+
+app.post('/api/lists/add-item', async (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  const { listId, attractionId } = (await c.req.json().catch(() => ({}))) as { listId?: string; attractionId?: string };
+  const li = db.lists.find((l) => l.user_id === userId && l.id === listId);
+  if (!li) return c.json({ error: 'List not found' }, 404);
+  li.items = Array.from(new Set([...(li.items || []), String(attractionId ?? '')]));
+  return ok(c, { success: true });
+});
+
+app.post('/api/lists/remove-item', async (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  const { listId, attractionId } = (await c.req.json().catch(() => ({}))) as { listId?: string; attractionId?: string };
+  const li = db.lists.find((l) => l.user_id === userId && l.id === listId);
+  if (!li) return c.json({ error: 'List not found' }, 404);
+  li.items = (li.items || []).filter((x) => x !== String(attractionId ?? ''));
+  return ok(c, { success: true });
+});
+
+app.get('/api/lists', (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  return ok(c, db.lists.filter((l) => l.user_id === userId));
+});
+
+app.post('/api/checkins/create', async (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  const { attractionId, photoUri } = (await c.req.json().catch(() => ({}))) as { attractionId?: string; photoUri?: string };
+  const id = `chk_${Date.now()}`;
+  db.checkins.unshift({ id, user_id: userId, attractionId: String(attractionId ?? ''), photoUri, createdAt: nowISO() });
+  return ok(c, { success: true, checkinId: id });
+});
+
+app.get('/api/checkins/list', (c) => {
+  const userId = parseAuth(c);
+  if (!userId) return unauthorized(c);
+  return ok(c, db.checkins.filter((x) => x.user_id === userId));
+});
+
+app.get('/api/feed', (c) => {
+  const friends = [
+    { id: 'u1', name: 'Alice', avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200' },
+    { id: 'u2', name: 'Bob', avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200' },
+    { id: 'u3', name: 'Charlie', avatarUrl: 'https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?w=200' },
+  ];
+  const feed = db.checkins.slice(0, 20).map((it, idx) => ({ id: `feed_${it.id}`, user: friends[idx % friends.length], attractionId: it.attractionId, photoUri: it.photoUri, createdAt: it.createdAt }));
+  return ok(c, feed);
+});
+
+app.post('/api/locations/search', async (c) => {
+  const { bounds, limit, zoom } = (await c.req.json().catch(() => ({}))) as { bounds?: { north: number; south: number; east: number; west: number }; limit?: number; zoom?: number };
+  const all: Attraction[] = [...NYC_ATTRACTIONS, ...TBILISI_ATTRACTIONS];
+  const b = bounds ?? { north: 90, south: -90, east: 180, west: -180 };
+  const filtered = all.filter((a) => {
+    const lat = a.coordinate.latitude;
+    const lon = a.coordinate.longitude;
+    const inLat = lat <= b.north && lat >= b.south;
+    const crossesIDL = b.west > b.east;
+    const inLon = crossesIDL ? lon >= b.west || lon <= b.east : lon >= b.west && lon <= b.east;
+    return inLat && inLon;
+  });
+  const densityFactor = Math.max(1, Math.round(12 - Math.min(zoom ?? 12, 12)));
+  const decimated = filtered.filter((_, idx) => idx % densityFactor === 0).slice(0, (limit ?? 200));
+  return ok(c, { items: decimated, total: filtered.length });
+});
+
+function genCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+function addCode(userId: number, type: 'email' | 'phone', code: string) {
+  db.verification = db.verification.filter((v) => !(v.user_id === userId && v.type === type && !v.verified));
+  db.verification.push({ id: db.verification.length + 1, user_id: userId, type, code, expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(), verified: false, created_at: nowISO() });
+}
+
+function latestCode(userId: number, type: 'email' | 'phone', code: string) {
+  return db.verification
+    .filter((v) => v.user_id === userId && v.type === type && v.code === code)
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0];
+}
+
+function sanitize(u: User) {
+  const { password: _pw, ...rest } = u;
+  return { ...rest };
+}
+
+app.use('/api/trpc/*', trpcServer({ router: appRouter, createContext }));
 
 export default app;
