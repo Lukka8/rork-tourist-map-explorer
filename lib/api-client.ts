@@ -254,7 +254,8 @@ async function mockFetch<T = unknown>(endpoint: string, options: RequestInit = {
   if (endpoint.startsWith('/api/lists')) {
     const key = '@lists_v1';
     const raw = await AsyncStorage.getItem(key);
-    const lists = (raw ? JSON.parse(raw) as Array<{ id: string; name: string; items: string[] }> : []);
+    type ListRec = { id: string; name: string; items: string[]; visibility: 'public' | 'private'; coverImageUrl?: string; ownerId: string; followers: string[] };
+    const lists = (raw ? JSON.parse(raw) as ListRec[] : []);
 
     if (endpoint === '/api/lists') {
       return lists as unknown as T;
@@ -263,10 +264,10 @@ async function mockFetch<T = unknown>(endpoint: string, options: RequestInit = {
     if (endpoint.startsWith('/api/lists/create') && method === 'POST') {
       const b = toRecord(body);
       const id = `list_${Date.now()}`;
-      const entry = { id, name: String(b.name ?? 'New List'), items: [] as string[] };
+      const entry: ListRec = { id, name: String(b.name ?? 'New List'), items: [], visibility: 'private', ownerId: 'me', followers: [], coverImageUrl: undefined };
       const next = [entry, ...lists];
       await AsyncStorage.setItem(key, JSON.stringify(next));
-      return { id, name: entry.name } as T;
+      return { id, name: entry.name, visibility: entry.visibility, coverImageUrl: entry.coverImageUrl } as T;
     }
 
     if (endpoint.startsWith('/api/lists/rename') && method === 'POST') {
@@ -303,6 +304,56 @@ async function mockFetch<T = unknown>(endpoint: string, options: RequestInit = {
       await AsyncStorage.setItem(key, JSON.stringify(next));
       return { success: true } as T;
     }
+
+    if (endpoint.startsWith('/api/lists/set-visibility') && method === 'POST') {
+      const b = toRecord(body);
+      const id = String(b.id ?? '');
+      const visibility = (b.visibility === 'public' ? 'public' : 'private') as 'public' | 'private';
+      const next = lists.map(l => l.id === id ? { ...l, visibility } : l);
+      await AsyncStorage.setItem(key, JSON.stringify(next));
+      return { success: true } as T;
+    }
+
+    if (endpoint.startsWith('/api/lists/set-cover') && method === 'POST') {
+      const b = toRecord(body);
+      const id = String(b.id ?? '');
+      const coverImageUrl = (b.coverImageUrl as string | undefined);
+      const next = lists.map(l => l.id === id ? { ...l, coverImageUrl } : l);
+      await AsyncStorage.setItem(key, JSON.stringify(next));
+      return { success: true } as T;
+    }
+
+    if (endpoint.startsWith('/api/lists/follow') && method === 'POST') {
+      const b = toRecord(body);
+      const id = String(b.id ?? '');
+      const userId = 'me';
+      const next = lists.map(l => l.id === id ? { ...l, followers: Array.from(new Set([...(l.followers || []), userId])) } : l);
+      await AsyncStorage.setItem(key, JSON.stringify(next));
+      return { success: true } as T;
+    }
+
+    if (endpoint.startsWith('/api/lists/unfollow') && method === 'POST') {
+      const b = toRecord(body);
+      const id = String(b.id ?? '');
+      const userId = 'me';
+      const next = lists.map(l => l.id === id ? { ...l, followers: (l.followers || []).filter(u => u !== userId) } : l);
+      await AsyncStorage.setItem(key, JSON.stringify(next));
+      return { success: true } as T;
+    }
+
+    if (endpoint.startsWith('/api/lists/copy') && method === 'POST') {
+      const b = toRecord(body);
+      const sourceId = String(b.id ?? '');
+      const src = lists.find(l => l.id === sourceId);
+      if (!src) return { success: false } as unknown as T;
+      const id = `list_${Date.now()}`;
+      const entry: ListRec = { id, name: src.name, items: [...(src.items || [])], visibility: 'private', ownerId: 'me', followers: [], coverImageUrl: src.coverImageUrl };
+      const next = [entry, ...lists];
+      await AsyncStorage.setItem(key, JSON.stringify(next));
+      return { success: true, id } as T;
+    }
+
+    throw new Error(`No lists mock handler for ${method} ${endpoint}`);
   }
 
   throw new Error(`No mock handler for ${method} ${endpoint}`);
@@ -459,12 +510,17 @@ export const api = {
   },
 
   lists: {
-    all: () => apiFetch<Array<{ id: string; name: string; items: string[] }>>('/api/lists'),
-    create: (name: string) => apiFetch<{ id: string; name: string }>('/api/lists/create', { method: 'POST', body: JSON.stringify({ name }) }),
+    all: () => apiFetch<Array<{ id: string; name: string; items: string[]; visibility: 'public' | 'private'; coverImageUrl?: string; ownerId?: string; followers?: string[] }>>('/api/lists'),
+    create: (name: string) => apiFetch<{ id: string; name: string; visibility: 'public' | 'private'; coverImageUrl?: string }>('/api/lists/create', { method: 'POST', body: JSON.stringify({ name }) }),
     rename: (id: string, name: string) => apiFetch<{ success: boolean }>('/api/lists/rename', { method: 'POST', body: JSON.stringify({ id, name }) }),
     remove: (id: string) => apiFetch<{ success: boolean }>('/api/lists/remove', { method: 'POST', body: JSON.stringify({ id }) }),
     addItem: (listId: string, attractionId: string) => apiFetch<{ success: boolean }>('/api/lists/add-item', { method: 'POST', body: JSON.stringify({ listId, attractionId }) }),
     removeItem: (listId: string, attractionId: string) => apiFetch<{ success: boolean }>('/api/lists/remove-item', { method: 'POST', body: JSON.stringify({ listId, attractionId }) }),
+    setVisibility: (id: string, visibility: 'public' | 'private') => apiFetch<{ success: boolean }>('/api/lists/set-visibility', { method: 'POST', body: JSON.stringify({ id, visibility }) }),
+    setCover: (id: string, coverImageUrl?: string) => apiFetch<{ success: boolean }>('/api/lists/set-cover', { method: 'POST', body: JSON.stringify({ id, coverImageUrl }) }),
+    follow: (id: string) => apiFetch<{ success: boolean }>('/api/lists/follow', { method: 'POST', body: JSON.stringify({ id }) }),
+    unfollow: (id: string) => apiFetch<{ success: boolean }>('/api/lists/unfollow', { method: 'POST', body: JSON.stringify({ id }) }),
+    copy: (id: string) => apiFetch<{ success: boolean; id: string }>('/api/lists/copy', { method: 'POST', body: JSON.stringify({ id }) }),
   },
 
   verification: {

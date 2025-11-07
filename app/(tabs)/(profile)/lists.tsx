@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, Alert, Switch } from 'react-native';
 import { Stack } from 'expo-router';
 import { useLists } from '@/lib/lists-context';
 import { useThemeColors } from '@/lib/use-theme-colors';
+import { Image } from 'expo-image';
 
 export default function ListsScreen() {
-  const { lists, isLoading, createList, renameList, removeList } = useLists();
+  const { lists, isLoading, createList, renameList, removeList, setVisibility, setCover, copy } = useLists();
   const [name, setName] = useState<string>('');
   const colors = useThemeColors();
 
@@ -36,18 +37,44 @@ export default function ListsScreen() {
         contentContainerStyle={{ paddingVertical: 12 }}
         renderItem={({ item }) => (
           <View style={[styles.item, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {item.coverImageUrl ? (
+              <Image source={{ uri: item.coverImageUrl }} style={styles.cover} contentFit="cover" />
+            ) : null}
             <View style={{ flex: 1 }}>
               <Text style={[styles.title, { color: colors.text }]}>{item.name}</Text>
-              <Text style={{ color: colors.secondaryText, fontSize: 12 }}>{item.items.length} items</Text>
+              <Text style={{ color: colors.secondaryText, fontSize: 12 }}>{item.items.length} items • {item.visibility === 'public' ? 'Public' : 'Private'}</Text>
             </View>
-            <TouchableOpacity style={[styles.small, { borderColor: colors.border }]} onPress={() => {
-              Alert.prompt?.('Rename list', 'Enter a new name', [{ text: 'Cancel', style: 'cancel' }, { text: 'Save', onPress: async (v?: string) => { if (v) await renameList(item.id, v); } }], 'plain-text', item.name);
-            }}>
-              <Text style={{ color: colors.text }}>Rename</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.small, { borderColor: colors.error }]} onPress={() => removeList(item.id)}>
-              <Text style={{ color: colors.error }}>Delete</Text>
-            </TouchableOpacity>
+            <View style={styles.rightCol}>
+              <View style={styles.rowInline}>
+                <Text style={{ color: colors.secondaryText, marginRight: 6 }}>Public</Text>
+                <Switch value={item.visibility === 'public'} onValueChange={(v) => setVisibility(item.id, v ? 'public' : 'private')} />
+              </View>
+              <TouchableOpacity style={[styles.small, { borderColor: colors.border }]} onPress={() => {
+                Alert.prompt?.('Set cover image URL', 'Paste an image URL', [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Save', onPress: async (v?: string) => { await setCover(item.id, v && v.trim() ? v.trim() : undefined); } },
+                ], 'plain-text', item.coverImageUrl ?? '');
+              }}>
+                <Text style={{ color: colors.text }}>Cover</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.small, { borderColor: colors.border }]} onPress={() => {
+                const link = `https://example.com/list/${item.id}`;
+                Alert.alert('Share link', link);
+              }}>
+                <Text style={{ color: colors.text }}>Share</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.small, { borderColor: colors.border }]} onPress={() => copy(item.id)}>
+                <Text style={{ color: colors.text }}>Copy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.small, { borderColor: colors.error }]} onPress={() => removeList(item.id)}>
+                <Text style={{ color: colors.error }}>Delete</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.small, { borderColor: colors.border }]} onPress={() => {
+                Alert.prompt?.('Rename list', 'Enter a new name', [{ text: 'Cancel', style: 'cancel' }, { text: 'Save', onPress: async (v?: string) => { if (v) await renameList(item.id, v); } }], 'plain-text', item.name);
+              }}>
+                <Text style={{ color: colors.text }}>Rename</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
         ListEmptyComponent={<View style={styles.empty}><Text style={{ color: colors.secondaryText }}>No lists yet</Text></View>}
@@ -66,4 +93,7 @@ const styles = StyleSheet.create({
   small: { height: 36, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 16, fontWeight: '700' as const },
   empty: { alignItems: 'center', marginTop: 40 },
+  cover: { width: 64, height: 64, borderRadius: 8 },
+  rowInline: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  rightCol: { gap: 6, alignItems: 'flex-end' },
 });

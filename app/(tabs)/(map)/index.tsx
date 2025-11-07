@@ -398,6 +398,49 @@ export default function MapScreen() {
     setCurrentZoom(region.latitudeDelta);
   };
 
+  type Cluster = { id: string; coordinate: { latitude: number; longitude: number }; count: number; items: Attraction[] };
+  const clusters = (() => {
+    if (shouldShowAttractions) return [] as Cluster[];
+    const cellSize = Math.max(0.2, currentZoom * 4);
+    const map = new Map<string, Cluster>();
+    for (const a of filteredAttractions) {
+      const gx = Math.floor(a.coordinate.latitude / cellSize);
+      const gy = Math.floor(a.coordinate.longitude / cellSize);
+      const key = `${gx}:${gy}`;
+      const existing = map.get(key);
+      if (!existing) {
+        map.set(key, { id: key, coordinate: { latitude: a.coordinate.latitude, longitude: a.coordinate.longitude }, count: 1, items: [a] });
+      } else {
+        existing.count += 1;
+        existing.items.push(a);
+        existing.coordinate = {
+          latitude: (existing.coordinate.latitude * (existing.count - 1) + a.coordinate.latitude) / existing.count,
+          longitude: (existing.coordinate.longitude * (existing.count - 1) + a.coordinate.longitude) / existing.count,
+        };
+      }
+    }
+    return Array.from(map.values());
+  })();
+
+  const onClusterPress = (cluster: Cluster) => {
+    const items = cluster.items;
+    if (items.length === 1) {
+      handleMarkerPress(items[0]);
+      return;
+    }
+    const lats = items.map(i => i.coordinate.latitude);
+    const lngs = items.map(i => i.coordinate.longitude);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+    const midLat = (minLat + maxLat) / 2;
+    const midLng = (minLng + maxLng) / 2;
+    const latDelta = (maxLat - minLat) * 1.8 || Math.max(currentZoom * 0.6, 0.02);
+    const lngDelta = (maxLng - minLng) * 1.8 || Math.max(currentZoom * 0.6, 0.02);
+    mapRef.current?.animateToRegion({ latitude: midLat, longitude: midLng, latitudeDelta: Math.max(latDelta, 0.02), longitudeDelta: Math.max(lngDelta, 0.02) }, 500);
+  };
+
   const renderMap = () => {
     return (
       <MapView
@@ -414,7 +457,15 @@ export default function MapScreen() {
       >
         {userLocation && <UserLocationMarker coordinate={userLocation} heading={userHeading} />}
         
-        {filteredAttractions.map((attraction) => (
+        {(!shouldShowAttractions ? clusters : []).map((cl) => (
+          <Marker key={`cluster_${cl.id}`} coordinate={cl.coordinate} onPress={() => onClusterPress(cl)}>
+            <View style={[styles.clusterBubble, { shadowColor: colors.text }]}>
+              <Text style={styles.clusterText}>{cl.count}</Text>
+            </View>
+          </Marker>
+        ))}
+
+        {(shouldShowAttractions ? filteredAttractions : []).map((attraction) => (
           <Marker
             key={attraction.id}
             coordinate={attraction.coordinate}
@@ -943,6 +994,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
   },
+  clusterBubble: {
+    minWidth: 36,
+    height: 36,
+    paddingHorizontal: 8,
+    borderRadius: 18,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  clusterText: { color: '#FFF', fontWeight: '800' as const, fontSize: 14 },
   controlsContainer: {
     position: 'absolute',
     bottom: 40,

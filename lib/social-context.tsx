@@ -61,6 +61,7 @@ interface SocialState {
   createCircle: (name: string, memberIds: UserId[]) => void;
   toggleShareLocation: (friendId: string, value: boolean) => void;
   createChat: (name: string, memberIds: UserId[]) => string;
+  addMembersToChat: (chatId: string, memberIds: UserId[]) => void;
   sendMessage: (chatId: string, message: Omit<ChatMessage, 'id'|'createdAt'>) => void;
 }
 
@@ -164,11 +165,20 @@ function useSocialImpl(): SocialState {
 
   const createChat = useCallback((name: string, memberIds: UserId[]) => {
     const id = `chat_${Date.now()}`;
-    const chat: Chat = { id, name, members: memberIds, lastMessageAt: new Date().toISOString() };
+    const chat: Chat = { id, name, members: Array.from(new Set(['me', ...memberIds])), lastMessageAt: new Date().toISOString() };
     const next = [chat, ...chats];
     setChats(next);
     persist({ chats: next });
     return id;
+  }, [chats, persist]);
+
+  const addMembersToChat = useCallback((chatId: string, memberIds: UserId[]) => {
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) return;
+    const updated: Chat = { ...chat, members: Array.from(new Set([...(chat.members || []), ...memberIds])) };
+    const next = chats.map(c => c.id === chatId ? updated : c);
+    setChats(next);
+    persist({ chats: next });
   }, [chats, persist]);
 
   const sendMessage = useCallback((chatId: string, input: Omit<ChatMessage, 'id'|'createdAt'>) => {
@@ -200,6 +210,7 @@ function useSocialImpl(): SocialState {
     createCircle,
     toggleShareLocation,
     createChat,
+    addMembersToChat,
     sendMessage,
   };
 }
