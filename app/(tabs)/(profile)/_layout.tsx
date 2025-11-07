@@ -15,6 +15,7 @@ export default function ProfileLayout() {
       <Stack.Screen name="requests" options={{ headerShown: true, title: 'Friend Requests' }} />
       <Stack.Screen name="circles" options={{ headerShown: true, title: 'Circles' }} />
       <Stack.Screen name="lists" options={{ headerShown: true, title: 'My Lists' }} />
+      <Stack.Screen name="account" options={{ headerShown: true, title: 'Account' }} />
     </Stack>
   );
 }

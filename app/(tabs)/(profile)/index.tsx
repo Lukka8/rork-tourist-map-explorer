@@ -201,6 +201,16 @@ export default function ProfileScreen() {
         )}
       </View>
 
+      <View style={styles.manageAccountRow}>
+        <TouchableOpacity
+          testID="manage-account-button"
+          style={[styles.manageAccountBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => router.push('/(tabs)/(profile)/account')}
+        >
+          <Text style={[styles.manageAccountText, { color: colors.primary }]}>Change email or phone</Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.statsContainer}>
         <View style={[styles.statBox, { backgroundColor: colors.card }]}>
           <Heart size={24} color={colors.heartRed} fill={colors.heartRed} />
@@ -440,6 +450,21 @@ const styles = StyleSheet.create({
   contactText: {
     flex: 1,
     fontSize: 15,
+  },
+  manageAccountRow: {
+    paddingHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  manageAccountBtn: {
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  manageAccountText: {
+    fontSize: 15,
+    fontWeight: '700' as const,
   },
   statsContainer: {
     flexDirection: 'row',

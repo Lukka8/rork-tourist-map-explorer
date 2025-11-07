@@ -24,6 +24,7 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   updateAvatar: (uri: string | null) => Promise<void>;
+  updateEmailAndPhone: (data: { email?: string; phone?: string }) => Promise<void>;
 }
 
 interface RegisterData {
@@ -181,6 +182,24 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     logout,
     refreshUser,
     updateAvatar,
+    updateEmailAndPhone: async (data: { email?: string; phone?: string }) => {
+      try {
+        console.log('[Auth] Updating contact info', data);
+        if (!user) throw new Error('Not authenticated');
+        const updated: User = {
+          ...user,
+          email: data.email ?? user.email,
+          phone: data.phone ?? user.phone,
+          email_verified: data.email ? false : user.email_verified,
+          phone_verified: data.phone ? false : user.phone_verified,
+        };
+        await AsyncStorage.setItem(USER_KEY, JSON.stringify(updated));
+        setUser(updated);
+      } catch (e) {
+        console.error('[Auth] Failed to update contact info', e);
+        throw e;
+      }
+    },
   };
 
   return value;
