@@ -21,7 +21,7 @@ import {
   User,
   Send,
 } from 'lucide-react-native';
-import { NYC_ATTRACTIONS } from '@/constants/attractions';
+import { NYC_ATTRACTIONS, TBILISI_ATTRACTIONS } from '@/constants/attractions';
 import { useAttractions } from '@/lib/attractions-context';
 
 export default function AttractionDetailScreen() {
@@ -33,7 +33,7 @@ export default function AttractionDetailScreen() {
   const attractions = useAttractions();
   const { isFavorite, isVisited, addFavorite, removeFavorite, addVisited } = attractions;
 
-  const attraction = NYC_ATTRACTIONS.find((a) => a.id === id);
+  const attraction = [...NYC_ATTRACTIONS, ...TBILISI_ATTRACTIONS].find((a) => a.id === id);
 
   const averageRating = reviews.length > 0
     ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length

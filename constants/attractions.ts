@@ -16,8 +16,7 @@ export interface CityAttraction extends Attraction {
   cityName: string;
 }
 
-export const ATTRACTIONS: CityAttraction[] = [
-  // New York City
+export const NYC_ATTRACTIONS: CityAttraction[] = [
   {
     id: '1',
     cityKey: 'nyc',
@@ -102,8 +101,9 @@ export const ATTRACTIONS: CityAttraction[] = [
     imageUrl: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800',
     category: 'landmark',
   },
+];
 
-  // Tbilisi
+export const TBILISI_ATTRACTIONS: CityAttraction[] = [
   {
     id: 'tbilisi-1',
     cityKey: 'tbilisi',
@@ -190,6 +190,11 @@ export const ATTRACTIONS: CityAttraction[] = [
   },
 ];
 
+export const ALL_ATTRACTIONS: CityAttraction[] = [
+  ...NYC_ATTRACTIONS,
+  ...TBILISI_ATTRACTIONS,
+];
+
 export function getAttractionsByCity(cityKey: string): CityAttraction[] {
-  return ATTRACTIONS.filter((a) => a.cityKey === cityKey);
+  return ALL_ATTRACTIONS.filter((a) => a.cityKey === cityKey);
 }
