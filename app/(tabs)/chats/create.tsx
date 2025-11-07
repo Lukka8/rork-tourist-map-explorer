@@ -1,5 +1,7 @@
 import { useMemo, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, Platform, KeyboardAvoidingView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardHeight } from '@/lib/use-keyboard';
 import { useRouter } from 'expo-router';
 import { useSocial, FriendProfile } from '@/lib/social-context';
 import { Check, UserPlus, Users } from 'lucide-react-native';
@@ -9,6 +11,8 @@ export default function CreateChatScreen() {
   const { friends, createChat } = useSocial();
   const colors = useThemeColors();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const kb = useKeyboardHeight();
 
   const [mode, setMode] = useState<'dm' | 'group'>('dm');
   const [selected, setSelected] = useState<string[]>([]);
@@ -51,8 +55,13 @@ export default function CreateChatScreen() {
     router.replace(`/chats/${id}`);
   }, [canCreate, mode, selected, groupName, friends, createChat, router]);
 
+  const bottomOffset = (Platform.OS === 'ios' ? kb : 0) + insets.bottom;
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.secondaryBackground }]}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={[styles.container, { backgroundColor: colors.secondaryBackground }]}
+      keyboardVerticalOffset={insets.top}
       testID="create-chat-screen"
     >
       <View style={styles.segmented}
@@ -116,12 +125,12 @@ export default function CreateChatScreen() {
         testID="create-chat-submit"
         onPress={submit}
         disabled={!canCreate}
-        style={[styles.submit, { backgroundColor: colors.primary }, !canCreate && { opacity: 0.5 }]}
+        style={[styles.submit, { backgroundColor: colors.primary, bottom: 16 + bottomOffset }, !canCreate && { opacity: 0.5 }]}
       >
         {mode === 'dm' ? <UserPlus size={18} color="#FFF" /> : <Users size={18} color="#FFF" />}
         <Text style={styles.submitText}>{mode === 'dm' ? 'Start chat' : 'Create group'}</Text>
       </TouchableOpacity>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

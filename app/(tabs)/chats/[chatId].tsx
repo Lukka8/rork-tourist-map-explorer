@@ -1,6 +1,9 @@
 import { Stack, useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { useMemo, useRef, useState, useLayoutEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Modal } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 import { useSocial, FriendProfile } from '@/lib/social-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -17,6 +20,9 @@ export default function ChatScreen() {
   const [selected, setSelected] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
+  const tabBarHeight = useBottomTabBarHeight?.() ?? 0;
 
   const chat = useMemo(() => chats.find(c => c.id === chatId), [chats, chatId]);
   const availableFriends = useMemo(() => friends.filter(f => !chat?.members.includes(f.id)), [friends, chat]);
@@ -56,8 +62,14 @@ export default function ChatScreen() {
     setShowAddMembers(false);
   };
 
+  const keyboardOffset = Math.max(0, headerHeight) + Math.max(0, tabBarHeight) + insets.bottom;
+
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.secondaryBackground }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: colors.secondaryBackground }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={keyboardOffset}
+    >
       <View style={{ flex: 1 }}>
         <FlatList
           data={messages}
