@@ -11,6 +11,11 @@ export interface Attraction {
   category: 'landmark' | 'museum' | 'park' | 'cultural';
 }
 
+export interface CityAttraction extends Attraction {
+  cityKey: string;
+  cityName: string;
+}
+
 export const NYC_ATTRACTIONS: Attraction[] = [
   {
     id: '1',
@@ -184,3 +189,12 @@ export const TBILISI_ATTRACTIONS: Attraction[] = [
     category: 'cultural',
   },
 ];
+
+export const ALL_ATTRACTIONS: CityAttraction[] = [
+  ...NYC_ATTRACTIONS.map((a) => ({ ...a, cityKey: 'nyc', cityName: 'New York City' })),
+  ...TBILISI_ATTRACTIONS.map((a) => ({ ...a, cityKey: 'tbilisi', cityName: 'Tbilisi' })),
+];
+
+export function getAttractionsByCity(cityKey: string): CityAttraction[] {
+  return ALL_ATTRACTIONS.filter((a) => a.cityKey === cityKey);
+}
