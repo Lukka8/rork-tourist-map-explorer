@@ -1,5 +1,5 @@
 import createContextHook from '@nkzw/create-context-hook';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
@@ -45,9 +45,6 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const notificationListener = useRef<any>();
-  const responseListener = useRef<any>();
-
   useEffect(() => {
     const loadNotifications = async () => {
       try {
@@ -79,7 +76,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
       }
     });
 
-    notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
+    const notificationListener = Notifications.addNotificationReceivedListener((notification) => {
       console.log('[Notifications] Notification received:', notification);
       
       const newNotification: AppNotification = {
@@ -99,17 +96,13 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
       });
     });
 
-    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+    const responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
       console.log('[Notifications] Notification tapped:', response);
     });
 
     return () => {
-      if (notificationListener.current) {
-        notificationListener.current.remove();
-      }
-      if (responseListener.current) {
-        responseListener.current.remove();
-      }
+      (notificationListener.remove as any)();
+      (responseListener.remove as any)();
     };
   }, []);
 
