@@ -127,7 +127,13 @@ export default function VerifyScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Verify Account', headerShown: true }} />
+      <Stack.Screen options={{ 
+        title: 'Verify Account', 
+        headerShown: true,
+        headerStyle: { backgroundColor: colors.card },
+        headerTintColor: colors.text,
+        headerTitleStyle: { color: colors.text }
+      }} />
       <View style={[styles.container, { backgroundColor: colors.secondaryBackground, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <View style={styles.content}>
           <View style={styles.header}>
