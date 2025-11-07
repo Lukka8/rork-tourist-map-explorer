@@ -10,6 +10,8 @@ import { SocialProvider } from "@/lib/social-context";
 import { AttractionsProvider } from "@/lib/attractions-context";
 import { ThemeProvider } from "@/lib/theme-context";
 import { ListsProvider } from "@/lib/lists-context";
+import { AdminProvider } from "@/lib/admin-context";
+import { NotificationsProvider } from "@/lib/notifications-context";
 
 if (Platform.OS === 'web') {
   try {
@@ -107,17 +109,21 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          <AttractionsProvider>
-            <ListsProvider>
-              <SocialProvider>
-                <GestureHandlerRootView style={{ flex: 1 }}>
-                  <AuthGate>
-                    <RootLayoutNav />
-                  </AuthGate>
-                </GestureHandlerRootView>
-              </SocialProvider>
-            </ListsProvider>
-          </AttractionsProvider>
+          <NotificationsProvider>
+            <AdminProvider>
+              <AttractionsProvider>
+                <ListsProvider>
+                  <SocialProvider>
+                    <GestureHandlerRootView style={{ flex: 1 }}>
+                      <AuthGate>
+                        <RootLayoutNav />
+                      </AuthGate>
+                    </GestureHandlerRootView>
+                  </SocialProvider>
+                </ListsProvider>
+              </AttractionsProvider>
+            </AdminProvider>
+          </NotificationsProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

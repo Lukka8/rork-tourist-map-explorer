@@ -23,8 +23,10 @@ import {
   Moon,
   Sun,
   Monitor,
+  Shield,
 } from 'lucide-react-native';
 import { useAuth } from '@/lib/auth-context';
+import { useAdmin } from '@/lib/admin-context';
 import { useRouter } from 'expo-router';
 import { NYC_ATTRACTIONS } from '@/constants/attractions';
 import { useAttractions } from '@/lib/attractions-context';
@@ -35,6 +37,7 @@ import { Platform } from 'react-native';
 
 export default function ProfileScreen() {
   const { user, logout, isLoading: isAuthLoading, updateAvatar } = useAuth();
+  const { isAdmin } = useAdmin();
   const router = useRouter();
   const [selectedTab, setSelectedTab] = useState<'favorites' | 'visited'>('favorites');
   const { favorites, visited, removeFavorite } = useAttractions();
@@ -210,6 +213,19 @@ export default function ProfileScreen() {
           <Text style={[styles.manageAccountText, { color: colors.primary }]}>Change email or phone</Text>
         </TouchableOpacity>
       </View>
+
+      {isAdmin && (
+        <View style={styles.manageAccountRow}>
+          <TouchableOpacity
+            testID="admin-tools-button"
+            style={[styles.adminBtn, { backgroundColor: colors.error + '20', borderColor: colors.error }]}
+            onPress={() => router.push('/(tabs)/(profile)/admin')}
+          >
+            <Shield size={20} color={colors.error} />
+            <Text style={[styles.adminBtnText, { color: colors.error }]}>Admin Tools</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <View style={styles.statsContainer}>
         <View style={[styles.statBox, { backgroundColor: colors.card }]}>
@@ -631,5 +647,18 @@ const styles = StyleSheet.create({
   },
   visitedDateText: {
     fontSize: 13,
+  },
+  adminBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 12,
+    paddingVertical: 12,
+    borderWidth: 2,
+  },
+  adminBtnText: {
+    fontSize: 15,
+    fontWeight: '700' as const,
   },
 });
